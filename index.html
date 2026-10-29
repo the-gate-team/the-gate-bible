@@ -168,6 +168,17 @@ body{margin:0}
 .explain-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px 20px;margin-top:10px}
 .explain-grid h4{margin:0 0 2px;font-family:var(--f-mono);font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
 .explain-grid p{margin:0 0 6px}
+.votebox{display:flex;flex-direction:column;gap:6px;background:var(--sunk);border-radius:var(--r);padding:8px 10px;margin-top:4px}
+.votebox.compact{background:transparent;padding:4px 0 0}
+.votecount{font-size:.93rem}
+.voters{display:flex;gap:6px;flex-wrap:wrap}
+.voter{font-size:.82rem;border:1px solid var(--line);border-radius:999px;padding:0 8px;background:var(--surface)}
+.voter.approve{color:var(--project);border-color:var(--project)}
+.voter.reject{color:var(--danger);border-color:var(--danger)}
+.voter.none{color:var(--muted)}
+.votebtns{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.btn.voted-yes{background:var(--project);border-color:var(--project);color:var(--surface)}
+.btn.voted-no{background:var(--danger);border-color:var(--danger);color:var(--surface)}
 .maplegend{display:flex;gap:14px;flex-wrap:wrap;font-size:.85rem;color:var(--muted);margin-top:8px}
 .maplegend i,.dotsm{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:middle}
 .lore{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:16px;max-width:820px}
@@ -360,12 +371,12 @@ function viewCanon(){
   const count=s=>all.filter(e=>e.status===s).length;
   const props=all.filter(e=>e.status==="Proposal").sort(byName);
   const reg=[...S.register.values()].sort((a,b)=>(b.date||"").localeCompare(a.date||""));
-  return `<h2 class="view">Canon</h2><p class="lede">An idea starts as a Proposal. Once two teammates agree, it becomes Project canon. Rejected ideas are Discarded, never deleted, so nobody proposes them again by accident.</p>
+  return `<h2 class="view">Canon</h2><p class="lede">Every new idea starts as a Proposal, and the team votes on it. Each member has one equal vote. When more than half of the team approves (2 of 3), it becomes Project canon automatically; when more than half rejects, it is Discarded. Discarded ideas are kept, never deleted, so nobody proposes them again by accident.</p>
   <div class="stats">${STATUSES.map(s=>`<div class="stat"><b class="${SCLASS[s]}">${count(s)}</b>${s}</div>`).join("")}</div>
-  <h3 class="sub">Waiting for review</h3>
+  <h3 class="sub">Proposals to vote on</h3>${S.canWrite&&awaitingMyVote().length?`<p class="help"><b>${awaitingMyVote().length}</b> still need your vote.</p>`:""}
   ${!props.length?`<div class="empty">No proposals waiting.</div>`:`<div class="list">${props.map(e=>`<div class="row" style="cursor:default"><button class="btn ghost" style="padding:0;text-align:left;font-weight:700" data-open-entry="${e.id}">${esc(e.name)}</button>
-    <span class="meta">${S.canWrite?`<button class="btn small" data-setstatus="${e.id}" data-s="Project canon">Approve</button><button class="btn small" data-setstatus="${e.id}" data-s="Discarded">Discard</button>`:""}</span>
-    ${e.summary?`<span class="sum">${esc(e.summary)}</span>`:""}</div>`).join("")}</div>`}
+    <span class="meta"><span class="chip type">${esc(e.type)}</span></span>
+    ${e.summary?`<span class="sum">${esc(e.summary)}</span>`:""}<div style="grid-column:1/-1">${voteBox(e,true)}</div></div>`).join("")}</div>`}
   <h3 class="sub">Contradictions register</h3>
   <p class="help">Every time the team deliberately changes or fills in official Forgotten Realms canon, write it here: what changed, what canon says, and why.</p>
   ${reg.length?`<div class="tablewrap"><table><thead><tr><th>Date</th><th>What we changed</th><th>Official canon says</th><th>Why</th><th>Decided by</th>${S.canWrite?"<th></th>":""}</tr></thead><tbody>
@@ -391,8 +402,8 @@ function viewHome(){
     <p>${what}</p><ul>${does.map(d=>`<li>${d}</li>`).join("")}</ul><a class="btn" href="#${view}">Open ${title}</a></article>`;
   return `<h2 class="view">Welcome to The Gate Bible</h2>
   <p class="lede">This is the team's shared memory for our roleplay, set in the Forgotten Realms years after the events of Baldur's Gate 3 (1492 DR), whose heroes are now only anecdotes. Everything we decide about the world goes here, so every player and writer stays consistent. Changes appear for everyone instantly.</p>
-  ${S.loaded.entries&&(proposals||close.length)?`<div class="attention"><b>Needs attention</b><ul>
-    ${proposals?`<li><a href="#canon">${n(proposals,"proposal is","proposals are")} waiting for review</a> in Canon.</li>`:""}
+  ${S.loaded.entries&&(awaitingMyVote().length||close.length)?`<div class="attention"><b>Needs attention</b><ul>
+    ${awaitingMyVote().length?`<li><a href="#canon">${n(awaitingMyVote().length,"proposal is","proposals are")} waiting for your vote</a> in Canon.</li>`:""}
     ${close.map(p=>`<li><a href="#plots" data-open-plot="${p.id}">${esc(p.name)}</a> is at ${p.clockFilled|0} / ${p.clockSize|0}: ${(p.clockFilled|0)>=(p.clockSize|0)?"its clock is full.":"one more slice and it happens."}</li>`).join("")}
   </ul></div>`:""}
   <h3 class="sub">The sections</h3>
@@ -402,7 +413,7 @@ function viewHome(){
     ${card("timeline","Timeline","Every Event from the Codex, in year order, so the team agrees on what happened when.",
       ["Years are in DR (Dalereckoning). BG3 ends in 1492 DR.","Add an event with “New event”, or create a Codex entry of type Event with a year."],n(events,"event","events"))}
     ${card("canon","Canon","Where the team decides what is official.",
-      ["New ideas start as <b>Proposal</b>. Approve them to make them <b>Project canon</b>, or discard them.","<b>Official canon</b> means it comes from the games or D&amp;D books.","The contradictions register records each time we knowingly change official lore, and why.","Download a backup of the whole bible from the bottom of this page."],proposals?n(proposals,"to review","to review"):"Up to date")}
+      ["New ideas start as <b>Proposal</b>. Each member votes Approve or Reject; a majority (2 of 3) makes it <b>Project canon</b> or <b>Discarded</b>.","<b>Official canon</b> means it comes from the games or D&amp;D books.","The contradictions register records each time we knowingly change official lore, and why.","Download a backup of the whole bible from the bottom of this page."],awaitingMyVote().length?n(awaitingMyVote().length,"awaits your vote","await your vote"):proposals?n(proposals,"open vote","open votes"):"Up to date")}
     ${card("plots","Plots & clocks","The stories in motion: threats that grow, faction projects, and subplots.",
       ["Each plot has a clock: a pie split into 4, 6 or 8 slices. Fill a slice with + when the plot makes progress, erase one with − after a setback.","When the clock is full, the plot succeeds and the world changes.","Tick the portents (warning signs) as they happen in the roleplay.","Between two chapters or sessions, use “Faction turn” to move every clock at once."],n(active.length,"active plot","active plots"))}
     ${card("map","Map","Your maps, with named and tagged places linked to the Codex.",
@@ -587,8 +598,9 @@ function bindView(){
   v.querySelectorAll("[data-newinvite]").forEach(b=>b.onclick=()=>newInvite(b.dataset.newinvite));
 }
 document.addEventListener("click",async e=>{
-  const t=e.target.closest("[data-gotopin],[data-open-entry],[data-open-plot],[data-tick],[data-setstatus],[data-delreg],[data-portent]");
+  const t=e.target.closest("[data-vote],[data-gotopin],[data-open-entry],[data-open-plot],[data-tick],[data-setstatus],[data-delreg],[data-portent]");
   if(!t)return;
+  if(t.dataset.vote){castVote(t.dataset.vote,t.dataset.v);return}
   if(t.dataset.gotopin){gotoPin(t.dataset.gotopin);return}
   if(t.dataset.openEntry){if(S.entries.has(t.dataset.openEntry))openDrawer({kind:"entry",id:t.dataset.openEntry});}
   else if(t.dataset.openPlot)openDrawer({kind:"plot",id:t.dataset.openPlot});
@@ -630,6 +642,7 @@ function entryView(){
   const by=e.updatedBy&&e.updatedBy!=="setup"?e.updatedBy:"";
   return `<div class="dhead"><div><h2>${esc(e.name||"Untitled")}</h2>${e.nameFr?`<div class="fr">${esc(e.nameFr)}</div>`:""}</div>${closeBtn()}</div>
   <div class="chips"><span class="chip type">${esc(e.type)}</span>${e.module?`<span class="chip">${e.module}. ${esc(MODULES[e.module-1])}</span>`:""}${statusChip(e.status)}${e.type==="Event"&&(e.yearLabel||(e.year!=null&&e.year!==""))?`<span class="chip">${esc(yearText(e))}</span>`:""}</div>
+  ${e.status==="Proposal"?`<div class="sec"><h4>Team vote</h4>${voteBox(e)}</div>`:decisionLine(e)}
   ${sec("Summary",e.summary)}${sec("What BG3 changed",e.changed)}${sec("Public part",e.public)}${sec("Secret part",e.secret,"secret")}${fields}${sec("Canon source",e.source)}
   ${(e.tags||[]).length?`<div class="sec"><h4>Tags</h4><div class="links">${e.tags.map(t=>`<span class="chip">${esc(t)}</span>`).join("")}</div></div>`:""}
   <div class="sec"><h4>Linked entries</h4>${(e.links||[]).length?`<div class="links">${e.links.map(id=>`<button class="chip" data-open-entry="${id}">${esc(entryName(id))}</button>`).join("")}</div>`:`<p class="note">None yet.</p>`}</div>
@@ -645,7 +658,7 @@ function entryForm(){
   const others=[...S.entries.values()].filter(x=>x.id!==e.id&&!(e.links||[]).includes(x.id)).sort(byName);
   return `<div class="dhead"><h2>${S.entries.has(e.id)?"Edit entry":"New entry"}</h2>${closeBtn()}</div>
   <form class="form" id="entryForm" style="margin-top:12px">
-    <div class="two"><label>Type${sel("f_type",Object.keys(TYPES),type)}</label><label>Canon status${sel("f_status",STATUSES,e.status||"Proposal")}</label></div>
+    <div class="two"><label>Type${sel("f_type",Object.keys(TYPES),type)}</label><label>Canon status <span class="hint">Project canon and Discarded are decided by vote</span>${sel("f_status",(["Project canon","Discarded"].includes(e.status)?[e.status,"Proposal"]:["Proposal","Official canon"]),e.status||"Proposal")}</label></div>
     <label>Name<input type="text" id="f_name" value="${esc(e.name)}" required></label>
     <label>French name <span class="hint">Optional, for the glossary</span><input type="text" id="f_nameFr" value="${esc(e.nameFr)}"></label>
     <div class="two"><label>Module${sel("f_module",MODULES.map((m,i)=>({v:i+1,l:`${i+1}. ${m}`})),e.module||DEFAULT_MODULE[type])}</label>
@@ -999,6 +1012,43 @@ function pinsForEntry(id){return [...S.pins.values()].filter(p=>p.entryId===id&&
 function gotoPin(id){const p=S.pins.get(id);if(!p)return;S.mapId=p.mapId;S.focusPin=id;S.sel={kind:"pin",id};S.mode="view";
   renderDrawer();if(location.hash!=="#map")location.hash="#map";else renderView()}
 
+/* ---------- votes ---------- */
+S.votes=new Map(); // entryId -> Map(voter -> "approve"|"reject")
+function votesFor(id){return S.votes.get(id)||new Map()}
+function voteNeed(){const n=S.members.size||1;return Math.floor(n/2)+1}
+function myVote(id){return votesFor(id).get(S.me)||""}
+function awaitingMyVote(){return [...S.entries.values()].filter(e=>e.status==="Proposal"&&!myVote(e.id))}
+function setVoteLocal(entryId,voter,vote){let m=S.votes.get(entryId);if(!m){m=new Map();S.votes.set(entryId,m)}if(vote)m.set(voter,vote);else m.delete(voter)}
+const voteBusy=new Set();
+async function castVote(entryId,vote){
+  if(voteBusy.has(entryId))return;voteBusy.add(entryId);
+  const mine=myVote(entryId);
+  try{
+    if(mine===vote){
+      const {error}=await S.sb.from("votes").delete().eq("entry_id",entryId).eq("voter",S.me);if(error)throw error;
+      setVoteLocal(entryId,S.me,"");toast("Vote withdrawn");
+    }else{
+      const {error}=await S.sb.from("votes").upsert({entry_id:entryId,voter:S.me,vote});if(error)throw error;
+      setVoteLocal(entryId,S.me,vote);toast(vote==="approve"?"You voted to approve":"You voted to reject");
+    }
+  }catch(err){toast("Couldn't record the vote: "+(err.message||err))}
+  finally{voteBusy.delete(entryId);renderView();if(S.sel&&S.sel.kind==="entry"&&S.sel.id===entryId&&S.mode==="view")renderDrawer()}
+}
+function voteBox(e,compact){
+  const v=votesFor(e.id),need=voteNeed();
+  const yes=[...v.values()].filter(x=>x==="approve").length,no=[...v.values()].filter(x=>x==="reject").length;
+  const mine=myVote(e.id);
+  const people=[...S.members.keys()].sort().map(em=>{const x=v.get(em);
+    return `<span class="voter ${x||"none"}" title="${esc(em)}: ${x==="approve"?"approves":x==="reject"?"rejects":"has not voted yet"}">${x==="approve"?"✓":x==="reject"?"✗":"·"} ${esc(em===S.me?"you":em.split("@")[0])}</span>`}).join("");
+  return `<div class="votebox${compact?" compact":""}">
+    <div class="votecount"><b>${yes}</b> approve · <b>${no}</b> reject <span class="note">· ${need} needed to decide</span></div>
+    <div class="voters">${people}</div>
+    ${S.canWrite?`<div class="votebtns"><button class="btn small${mine==="approve"?" voted-yes":""}" data-vote="${e.id}" data-v="approve" aria-pressed="${mine==="approve"}">${mine==="approve"?"✓ Approved":"Approve"}</button><button class="btn small${mine==="reject"?" voted-no":""}" data-vote="${e.id}" data-v="reject" aria-pressed="${mine==="reject"}">${mine==="reject"?"✗ Rejected":"Reject"}</button>${mine?`<span class="note">Click your vote again to withdraw it.</span>`:""}</div>`:""}
+  </div>`;
+}
+function decisionLine(e){const d=e.decision;if(!d||!d.result)return "";
+  return `<p class="note">${d.result==="approved"?"Approved":"Rejected"} by the team's vote, ${d.approve} for and ${d.reject} against${d.at?`, on ${new Date(d.at).toLocaleDateString()}`:""}.</p>`;}
+
 /* ---------- writes ---------- */
 function stamp(o){o.updatedAt=Date.now();if(S.me)o.updatedBy=S.me;return o}
 function clean(o){return JSON.parse(JSON.stringify(o))}
@@ -1091,11 +1141,14 @@ async function loadAll(){
   }
   const {data:ms}=await S.sb.from("members").select("*");
   S.members.clear();(ms||[]).forEach(m=>S.members.set(m.email,m));
+  const {data:vs}=await S.sb.from("votes").select("*");
+  S.votes.clear();(vs||[]).forEach(x=>setVoteLocal(x.entry_id,x.voter,x.vote));
   renderView();if(S.sel&&S.mode==="view")renderDrawer();
 }
 function listen(){
   S.sb.channel("bible").on("postgres_changes",{event:"*",schema:"public"},p=>{
-    if(p.table==="members"){if(p.eventType==="DELETE")S.members.delete(p.old.email);else S.members.set(p.new.email,p.new)}
+    if(p.table==="votes"){if(p.eventType==="DELETE")setVoteLocal(p.old.entry_id,p.old.voter,"");else setVoteLocal(p.new.entry_id,p.new.voter,p.new.vote)}
+    else if(p.table==="members"){if(p.eventType==="DELETE")S.members.delete(p.old.email);else S.members.set(p.new.email,p.new)}
     else{const map=TABLES[p.table];if(!map)return;
       if(p.eventType==="DELETE")map.delete(p.old.id);else map.set(p.new.id,rowToItem(p.new));}
     renderView();if(S.sel&&S.mode==="view")renderDrawer();
