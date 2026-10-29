@@ -371,7 +371,7 @@ function viewCanon(){
   const count=s=>all.filter(e=>e.status===s).length;
   const props=all.filter(e=>e.status==="Proposal").sort(byName);
   const reg=[...S.register.values()].sort((a,b)=>(b.date||"").localeCompare(a.date||""));
-  return `<h2 class="view">Canon</h2><p class="lede">Every new idea starts as a Proposal, and the team votes on it. Each member has one equal vote. When more than half of the team approves (2 of 3), it becomes Project canon automatically; when more than half rejects, it is Discarded. Discarded ideas are kept, never deleted, so nobody proposes them again by accident.</p>
+  return `<h2 class="view">Canon</h2><p class="lede">Every new idea starts as a Proposal, and the team votes on it. Each member has one equal vote. Decisions are unanimous: when all three of us approve, it becomes Project canon automatically; when all three reject, it is Discarded. If the votes are split, it stays a proposal until everyone agrees. Discarded ideas are kept, never deleted, so nobody proposes them again by accident.</p>
   <div class="stats">${STATUSES.map(s=>`<div class="stat"><b class="${SCLASS[s]}">${count(s)}</b>${s}</div>`).join("")}</div>
   <h3 class="sub">Proposals to vote on</h3>${S.canWrite&&awaitingMyVote().length?`<p class="help"><b>${awaitingMyVote().length}</b> still need your vote.</p>`:""}
   ${!props.length?`<div class="empty">No proposals waiting.</div>`:`<div class="list">${props.map(e=>`<div class="row" style="cursor:default"><button class="btn ghost" style="padding:0;text-align:left;font-weight:700" data-open-entry="${e.id}">${esc(e.name)}</button>
@@ -413,7 +413,7 @@ function viewHome(){
     ${card("timeline","Timeline","Every Event from the Codex, in year order, so the team agrees on what happened when.",
       ["Years are in DR (Dalereckoning). BG3 ends in 1492 DR.","Add an event with “New event”, or create a Codex entry of type Event with a year."],n(events,"event","events"))}
     ${card("canon","Canon","Where the team decides what is official.",
-      ["New ideas start as <b>Proposal</b>. Each member votes Approve or Reject; a majority (2 of 3) makes it <b>Project canon</b> or <b>Discarded</b>.","<b>Official canon</b> means it comes from the games or D&amp;D books.","The contradictions register records each time we knowingly change official lore, and why.","Download a backup of the whole bible from the bottom of this page."],awaitingMyVote().length?n(awaitingMyVote().length,"awaits your vote","await your vote"):proposals?n(proposals,"open vote","open votes"):"Up to date")}
+      ["New ideas start as <b>Proposal</b>. Each member votes Approve or Reject; only a unanimous vote makes it <b>Project canon</b> or <b>Discarded</b>.","<b>Official canon</b> means it comes from the games or D&amp;D books.","The contradictions register records each time we knowingly change official lore, and why.","Download a backup of the whole bible from the bottom of this page."],awaitingMyVote().length?n(awaitingMyVote().length,"awaits your vote","await your vote"):proposals?n(proposals,"open vote","open votes"):"Up to date")}
     ${card("plots","Plots & clocks","The stories in motion: threats that grow, faction projects, and subplots.",
       ["Each plot has a clock: a pie split into 4, 6 or 8 slices. Fill a slice with + when the plot makes progress, erase one with − after a setback.","When the clock is full, the plot succeeds and the world changes.","Tick the portents (warning signs) as they happen in the roleplay.","Between two chapters or sessions, use “Faction turn” to move every clock at once."],n(active.length,"active plot","active plots"))}
     ${card("map","Map","Your maps, with named and tagged places linked to the Codex.",
@@ -1015,7 +1015,7 @@ function gotoPin(id){const p=S.pins.get(id);if(!p)return;S.mapId=p.mapId;S.focus
 /* ---------- votes ---------- */
 S.votes=new Map(); // entryId -> Map(voter -> "approve"|"reject")
 function votesFor(id){return S.votes.get(id)||new Map()}
-function voteNeed(){const n=S.members.size||1;return Math.floor(n/2)+1}
+function voteNeed(){return S.members.size||1}
 function myVote(id){return votesFor(id).get(S.me)||""}
 function awaitingMyVote(){return [...S.entries.values()].filter(e=>e.status==="Proposal"&&!myVote(e.id))}
 function setVoteLocal(entryId,voter,vote){let m=S.votes.get(entryId);if(!m){m=new Map();S.votes.set(entryId,m)}if(vote)m.set(voter,vote);else m.delete(voter)}
@@ -1041,7 +1041,8 @@ function voteBox(e,compact){
   const people=[...S.members.keys()].sort().map(em=>{const x=v.get(em);
     return `<span class="voter ${x||"none"}" title="${esc(em)}: ${x==="approve"?"approves":x==="reject"?"rejects":"has not voted yet"}">${x==="approve"?"✓":x==="reject"?"✗":"·"} ${esc(em===S.me?"you":em.split("@")[0])}</span>`}).join("");
   return `<div class="votebox${compact?" compact":""}">
-    <div class="votecount"><b>${yes}</b> approve · <b>${no}</b> reject <span class="note">· ${need} needed to decide</span></div>
+    <div class="votecount"><b>${yes}</b> approve · <b>${no}</b> reject <span class="note">· all ${need} must agree</span></div>
+    ${yes&&no?`<p class="note" style="margin:0">The votes are split. It stays a proposal until everyone agrees: talk it over, rework the idea, or change your vote.</p>`:""}
     <div class="voters">${people}</div>
     ${S.canWrite?`<div class="votebtns"><button class="btn small${mine==="approve"?" voted-yes":""}" data-vote="${e.id}" data-v="approve" aria-pressed="${mine==="approve"}">${mine==="approve"?"✓ Approved":"Approve"}</button><button class="btn small${mine==="reject"?" voted-no":""}" data-vote="${e.id}" data-v="reject" aria-pressed="${mine==="reject"}">${mine==="reject"?"✗ Rejected":"Reject"}</button>${mine?`<span class="note">Click your vote again to withdraw it.</span>`:""}</div>`:""}
   </div>`;
