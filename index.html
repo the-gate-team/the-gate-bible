@@ -55,7 +55,7 @@ h2.view{font-family:var(--f-display);font-size:1.6rem;margin:0 0 4px;text-wrap:b
 .lede{color:var(--muted);margin:0 0 16px;max-width:65ch}
 .bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
 .bar input[type=search]{flex:1 1 220px;min-width:0}
-input[type=text],input[type=search],input[type=number],select,textarea{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:6px 10px;width:100%}
+input[type=text],input[type=search],input[type=number],input[type=email],input[type=password],select,textarea{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:6px 10px;width:100%}
 .bar select{width:auto}
 textarea{min-height:76px;resize:vertical}
 .chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:1px 10px;font-size:.82rem;color:var(--muted);background:var(--surface);white-space:nowrap}
@@ -139,9 +139,15 @@ body{margin:0}
 <div id="loginScreen" class="wrap" hidden>
   <form class="login form" id="loginForm">
     <h1>The Gate Bible</h1>
-    <p class="help" style="margin:0">The team's worldbuilding codex for the BG3 sequel. Enter your email and we'll send you a sign-in link. Only people on the team list can sign in.</p>
-    <label>Email<input type="email" id="loginEmail" required autocomplete="email" style="background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:6px 10px;width:100%"></label>
-    <button class="btn primary" type="submit" id="loginBtn">Send me a sign-in link</button>
+    <p class="help" style="margin:0" id="loginIntro">The team's worldbuilding codex. Only people on the team list can sign in.</p>
+    <label>Email<input type="email" id="loginEmail" required autocomplete="email"></label>
+    <label>Password<input type="password" id="loginPassword" required minlength="8" autocomplete="current-password"></label>
+    <div id="firstTimeFields" hidden class="form">
+      <label>Repeat the password<input type="password" id="loginPassword2" minlength="8" autocomplete="new-password"></label>
+      <label>Invite code <span class="hint">The 8-character code the teammate who added you sent you</span><input type="text" id="loginCode" autocomplete="off" style="text-transform:uppercase;font-family:var(--f-mono)"></label>
+    </div>
+    <button class="btn primary" type="submit" id="loginBtn">Sign in</button>
+    <button class="btn ghost" type="button" id="modeBtn">First time here? Create your password</button>
     <p class="note" id="loginMsg" aria-live="polite"></p>
   </form>
 </div>
@@ -316,10 +322,11 @@ function viewCanon(){
 
 function viewTeam(){
   const ms=[...S.members.values()].sort((a,b)=>a.email.localeCompare(b.email));
-  return `<h2 class="view">Team</h2><p class="lede">Only the people listed here can sign in, read and edit the bible. To invite a colleague, add their email, then send them the app's web address. They sign in with a link sent to that email.</p>
-  <div class="list" style="max-width:640px">${ms.map(m=>`<div class="row" style="cursor:default"><span class="name">${esc(m.email)}${m.email===S.me?` <span class="note">(you)</span>`:""}</span>
-    <span class="meta">${m.email!==S.me?`<button class="btn small danger" data-delmember="${esc(m.email)}">${S.confirmMember===m.email?"Confirm":"Remove"}</button>`:""}</span>
-    <span class="sum">Added ${m.added_at?new Date(m.added_at).toLocaleDateString():""}${m.added_by&&m.added_by!=="setup"?` by ${esc(m.added_by)}`:""}</span></div>`).join("")}</div>
+  return `<h2 class="view">Team</h2><p class="lede">Only the people listed here can read and edit the bible. To invite a colleague: add their email, then send them the app's address and the invite code shown next to their name. The first time, they click “Create your password”, choose a password and enter the code.</p>
+  <div class="list" style="max-width:720px">${ms.map(m=>{const pending=!m.user_id;return `<div class="row" style="cursor:default${S.justAdded===m.email?";background:var(--accent-soft)":""}"><span class="name">${esc(m.email)}${m.email===S.me?` <span class="note">(you)</span>`:""}</span>
+    <span class="meta">${pending?`<span class="chip status s-proposal">Not joined yet</span><button class="btn small" data-newinvite="${esc(m.email)}">New code</button>`:`<span class="chip status s-project">Joined</span>`}${m.email!==S.me?`<button class="btn small danger" data-delmember="${esc(m.email)}">${S.confirmMember===m.email?"Confirm":"Remove"}</button>`:""}</span>
+    <span class="sum">${pending&&m.invite_code?`Invite code: <b style="font-family:var(--f-mono);color:var(--ink);letter-spacing:.08em">${esc(m.invite_code)}</b> · `:""}Added ${m.added_at?new Date(m.added_at).toLocaleDateString():""}${m.added_by&&m.added_by!=="setup"?` by ${esc(m.added_by)}`:""}</span></div>`}).join("")}</div>
+  <p class="help">Forgot a password? Remove the person, add them again, and send them the new code. They then create a new password.</p>
   <form id="memberForm" class="form" style="margin-top:14px;max-width:640px"><div style="display:flex;gap:8px;flex-wrap:wrap"><input type="email" id="m_email" placeholder="colleague@example.com" required aria-label="Colleague's email" style="flex:1 1 220px;min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:6px 10px"><button class="btn primary" type="submit">Add to team</button></div></form>`;
 }
 function bindView(){
@@ -338,6 +345,7 @@ function bindView(){
   on("#regForm","submit",addReg);
   on("#memberForm","submit",addMember);
   v.querySelectorAll("[data-delmember]").forEach(b=>b.onclick=()=>delMember(b.dataset.delmember));
+  v.querySelectorAll("[data-newinvite]").forEach(b=>b.onclick=()=>newInvite(b.dataset.newinvite));
 }
 document.addEventListener("click",async e=>{
   const t=e.target.closest("[data-open-entry],[data-open-plot],[data-tick],[data-setstatus],[data-delreg],[data-portent]");
@@ -546,11 +554,20 @@ async function exportAll(){
   const a=document.createElement("a");a.href=url;a.download="the-gate-bible-backup-"+new Date().toISOString().slice(0,10)+".json";
   document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2000);toast("Backup downloaded");
 }
+function newCode(){const a=new Uint8Array(4);crypto.getRandomValues(a);return [...a].map(b=>b.toString(16).padStart(2,"0")).join("").toUpperCase()}
 async function addMember(ev){
   ev.preventDefault();const email=document.getElementById("m_email").value.trim().toLowerCase();if(!email)return;
-  const {error}=await S.sb.from("members").insert({email,added_by:S.me});
+  const invite_code=newCode();
+  const {error}=await S.sb.from("members").insert({email,added_by:S.me,invite_code});
   if(error){toast(error.code==="23505"?"That email is already on the team.":"Couldn't add: "+error.message);return}
-  S.members.set(email,{email,added_at:new Date().toISOString(),added_by:S.me});toast("Added. Send them the app's address.");renderView();
+  S.members.set(email,{email,added_at:new Date().toISOString(),added_by:S.me,invite_code,user_id:null});
+  S.justAdded=email;toast("Added. Send them the address and their invite code.");renderView();
+}
+async function newInvite(email){
+  const invite_code=newCode();
+  const {error}=await S.sb.from("members").update({invite_code}).eq("email",email);
+  if(error){toast("Couldn't make a new code: "+error.message);return}
+  const m=S.members.get(email);if(m)m.invite_code=invite_code;S.justAdded=email;toast("New invite code created");renderView();
 }
 async function delMember(email){
   if(S.confirmMember!==email){S.confirmMember=email;renderView();return}S.confirmMember=null;
@@ -580,23 +597,57 @@ function listen(){
     renderView();if(S.sel&&S.mode==="view")renderDrawer();
   }).subscribe();
 }
+function claimPanel(note){
+  $("#banner").innerHTML=`<div class="banner"><form id="claimForm" class="form" style="max-width:420px">
+    <b>Enter your invite code to join the team</b>
+    <span>${note?esc(note):"The teammate who added "+esc(S.me)+" to the team has an 8-character code for you."}</span>
+    <div style="display:flex;gap:8px"><input type="text" id="claimCode" required style="text-transform:uppercase;font-family:var(--f-mono)" aria-label="Invite code"><button class="btn primary" type="submit">Join</button></div></form></div>`;
+  $("#claimForm").addEventListener("submit",async ev=>{ev.preventDefault();
+    const {data:ok}=await S.sb.rpc("claim_membership",{p_code:$("#claimCode").value});
+    if(ok){$("#banner").innerHTML="";S.canWrite=true;route();await loadAll();listen();toast("Welcome to the team")}
+    else claimPanel("That code doesn't match. Check it with the teammate who added you, or ask them for a new one.");
+  });
+}
+let started=false;
 async function showApp(session){
+  if(started)return;started=true;
   S.me=(session.user.email||"").toLowerCase();
   $("#loginScreen").hidden=true;$("#app").hidden=false;$("#who").textContent=S.me;
-  const {data:isMember}=await S.sb.rpc("is_member");
-  if(!isMember){$("#banner").innerHTML=`<div class="banner">${esc(S.me)} is not on the team list. Ask a teammate to add you on the Team page.</div>`;S.canWrite=false;S.loaded={entries:true,plots:true,register:true};renderView();return}
+  let {data:isMember}=await S.sb.rpc("is_member");
+  if(!isMember&&S.pendingCode){const {data:ok}=await S.sb.rpc("claim_membership",{p_code:S.pendingCode});S.pendingCode=null;isMember=!!ok;
+    if(!ok){S.canWrite=false;S.loaded={entries:true,plots:true,register:true};renderView();claimPanel("Your password is saved, but the invite code didn't match. Enter the right code to join.");return}}
+  if(!isMember){S.canWrite=false;S.loaded={entries:true,plots:true,register:true};renderView();
+    const {data:listed}=await S.sb.rpc("can_sign_in",{p_email:S.me});
+    if(listed)claimPanel();else $("#banner").innerHTML=`<div class="banner">${esc(S.me)} is not on the team list. Ask a teammate to add you on the Team page.</div>`;return}
   route();await loadAll();listen();
 }
 function showLogin(msg){$("#app").hidden=true;$("#loginScreen").hidden=false;if(msg)$("#loginMsg").textContent=msg}
+let firstTime=false;
+function setMode(ft){firstTime=ft;$("#firstTimeFields").hidden=!ft;$("#loginPassword2").required=ft;$("#loginCode").required=ft;
+  $("#loginPassword").autocomplete=ft?"new-password":"current-password";
+  $("#loginBtn").textContent=ft?"Create my password and sign in":"Sign in";
+  $("#modeBtn").textContent=ft?"Already have a password? Sign in":"First time here? Create your password";
+  $("#loginIntro").textContent=ft?"Choose a password (8 characters or more) and enter the invite code a teammate sent you.":"The team's worldbuilding codex. Only people on the team list can sign in.";
+  $("#loginMsg").textContent="";}
+$("#modeBtn").addEventListener("click",()=>setMode(!firstTime));
 $("#loginForm").addEventListener("submit",async ev=>{
-  ev.preventDefault();const email=$("#loginEmail").value.trim().toLowerCase();const btn=$("#loginBtn"),msg=$("#loginMsg");
-  btn.disabled=true;msg.textContent="Checking…";
-  const {data:ok,error:e1}=await S.sb.rpc("can_sign_in",{p_email:email});
-  if(e1){msg.textContent="Couldn't reach the database: "+e1.message;btn.disabled=false;return}
-  if(!ok){msg.textContent="This email isn't on the team list. Ask a teammate to add you on the Team page.";btn.disabled=false;return}
-  const {error}=await S.sb.auth.signInWithOtp({email,options:{emailRedirectTo:location.origin+location.pathname}});
-  btn.disabled=false;
-  msg.textContent=error?("Couldn't send the link: "+error.message):"Check your inbox for a sign-in link. It can take a minute; check spam too.";
+  ev.preventDefault();const email=$("#loginEmail").value.trim().toLowerCase(),pw=$("#loginPassword").value;const btn=$("#loginBtn"),msg=$("#loginMsg");
+  btn.disabled=true;msg.textContent="Checking…";const done=t=>{btn.disabled=false;msg.textContent=t};
+  if(firstTime){
+    if(pw!==$("#loginPassword2").value)return done("The two passwords are different.");
+    const {data:ok,error:e1}=await S.sb.rpc("can_sign_in",{p_email:email});
+    if(e1)return done("Couldn't reach the database: "+e1.message);
+    if(!ok)return done("This email isn't on the team list. Ask a teammate to add you on the Team page.");
+    S.pendingCode=$("#loginCode").value.trim().toUpperCase();
+    const {data,error}=await S.sb.auth.signUp({email,password:pw});
+    if(error)return done(/registered|exists/i.test(error.message)?"This email already has a password. Use “Sign in” instead.":"Couldn't create the password: "+error.message);
+    if(!data.session)return done("Account created, but Supabase still asks for email confirmation. The admin needs to turn off “Confirm email” in Supabase.");
+    btn.disabled=false;showApp(data.session);
+  }else{
+    const {data,error}=await S.sb.auth.signInWithPassword({email,password:pw});
+    if(error)return done(/invalid/i.test(error.message)?"Wrong email or password. First time here? Use “Create your password” below.":"Couldn't sign in: "+error.message);
+    btn.disabled=false;showApp(data.session);
+  }
 });
 $("#signOut").addEventListener("click",async()=>{await S.sb.auth.signOut();location.hash="";location.reload()});
 
@@ -605,7 +656,7 @@ $("#signOut").addEventListener("click",async()=>{await S.sb.auth.signOut();locat
   S.sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
   const {data:{session}}=await S.sb.auth.getSession();
   if(session)showApp(session);else showLogin();
-  S.sb.auth.onAuthStateChange((evt,sess)=>{if(evt==="SIGNED_IN"&&sess&&$("#app").hidden)showApp(sess);if(evt==="SIGNED_OUT")showLogin()});
+  S.sb.auth.onAuthStateChange((evt,sess)=>{if(evt==="SIGNED_OUT")showLogin()});
 })();
 </script>
 </body>
