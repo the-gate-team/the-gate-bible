@@ -187,6 +187,17 @@ body{margin:0}
 .linkbtn:hover{color:var(--accent)}
 .castcard .actions{margin-top:auto}
 @media (max-width:1400px){.who{display:none}}
+.mmwrap{position:relative;height:min(72vh,760px);background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;touch-action:none;cursor:grab;display:flex}
+.mmwrap.dragging{cursor:grabbing}
+.mmwrap svg{display:block;user-select:none;-webkit-user-select:none}
+.mmtools{position:absolute;top:10px;right:10px;display:flex;gap:4px}
+.mmnode{cursor:pointer}
+.mmnode:focus{outline:none}.mmnode:focus-visible rect:first-child{stroke:var(--ink)}
+.mmtitle{font:700 14px var(--f-body);fill:var(--ink)}
+.mmsub{font:12px var(--f-mono);fill:var(--muted)}
+.mmlabel{font:12px var(--f-body);fill:var(--ink);paint-order:stroke;stroke:var(--surface);stroke-width:4px;stroke-linejoin:round}
+.mmrel{font:italic 12px var(--f-body);fill:var(--accent);paint-order:stroke;stroke:var(--surface);stroke-width:5px;stroke-linejoin:round}
+.seg2{display:inline-flex;gap:2px}
 .maplegend{display:flex;gap:14px;flex-wrap:wrap;font-size:.85rem;color:var(--muted);margin-top:8px}
 .maplegend i,.dotsm{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:middle}
 .lore{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:16px;max-width:820px}
@@ -313,6 +324,7 @@ function renderView(){
   bindView();
   if(S.view==="map")bindMap();
   if(S.view==="cast")bindCast();
+  if(S.view==="plots"&&S.plotMode==="mind")bindMindMap();
 }
 function filteredEntries(){
   const q=S.q.trim().toLowerCase();
@@ -339,11 +351,13 @@ function viewCodex(){
   <p class="note">${list.length} of ${S.entries.size} entries</p>${body}`;
 }
 function viewPlots(){
-  const plots=[...S.plots.values()].filter(p=>!S.pKind||p.kind===S.pKind).sort((a,b)=>(PLOT_STATES.indexOf(a.state)-PLOT_STATES.indexOf(b.state))||byName(a,b));
+  const plots=[...S.plots.values()].filter(plotFilter).sort((a,b)=>(PLOT_STATES.indexOf(a.state)-PLOT_STATES.indexOf(b.state))||byName(a,b));
   let body;
   if(!S.loaded.plots) body=`<div class="empty"><b>Loading plots…</b></div>`;
   else if(!S.plots.size) body=`<div class="empty"><b>No plots yet</b>Add a front (a growing threat), a faction project or a subplot, then give it a clock.</div>`;
-  else body=`<div class="grid">`+plots.map(plotCard).join("")+`</div>`;
+  else if(S.plotMode==="mind")body=viewMindMap();
+  else body=plots.length?`<div class="grid">`+plots.map(plotCard).join("")+`</div>`:`<div class="empty">No plot matches these filters.</div>`;
+  const origins=[...new Set([...S.plots.values()].map(p=>p.origin||"New"))].sort();
   return `<h2 class="view">Plots &amp; clocks</h2><p class="lede">Each plot has a clock: a progress bar split into 4, 6 or 8 slices. When it fills, the plot succeeds and the world changes.</p>
   <details class="explain" ${S.plotHelpClosed?"":"open"} id="plotHelp"><summary>How plots work</summary>
     <div class="explain-grid">
@@ -353,7 +367,11 @@ function viewPlots(){
       <div><h4>Faction turn</h4><p>Use it <b>between two chapters or roleplay sessions</b>. It lists every active plot so you can decide, for each one, what happened while the story looked elsewhere: <b>+1</b> or <b>+2</b> if it progressed, <b>0</b> if nothing changed, <b>−1</b> if it suffered a setback. Add a one-line note, then apply: all clocks move at once and the notes go into each plot's history.</p><p class="note">This is what keeps the world alive: villains and factions keep acting even when the players are busy with something else.</p></div>
     </div>
   </details>
-  <div class="bar"><select id="pKind" aria-label="Filter by kind"><option value="">All kinds</option>${PLOT_KINDS.map(k=>`<option ${S.pKind===k?"selected":""}>${k}</option>`).join("")}</select>
+  <div class="bar"><div class="seg2" role="group" aria-label="Display"><button class="btn small${S.plotMode!=="mind"?" primary":""}" data-plotmode="cards" aria-pressed="${S.plotMode!=="mind"}">Cards</button><button class="btn small${S.plotMode==="mind"?" primary":""}" data-plotmode="mind" aria-pressed="${S.plotMode==="mind"}">Mind map</button></div>
+  <select id="pState" aria-label="Filter by state"><option value="open" ${S.pState==="open"?"selected":""}>Active and ideas</option><option value="resolved" ${S.pState==="resolved"?"selected":""}>Resolved</option><option value="all" ${S.pState==="all"?"selected":""}>All plots</option></select>
+  <select id="pKind" aria-label="Filter by kind"><option value="">All kinds</option>${PLOT_KINDS.map(k=>`<option ${S.pKind===k?"selected":""}>${k}</option>`).join("")}</select>
+  <select id="pOrigin" aria-label="Filter by origin"><option value="">All origins</option>${origins.map(o=>`<option ${S.pOrigin===o?"selected":""}>${esc(o)}</option>`).join("")}</select>
+  ${S.plotMode==="mind"?`<label class="note" style="display:flex;gap:4px;align-items:center"><input type="checkbox" id="mmEntries" ${S.mmEntries?"checked":""}> Factions, characters &amp; places</label>`:""}
   ${S.canWrite?`<button class="btn" id="factionTurn" title="Between chapters: move every active plot's clock at once">Faction turn</button><button class="btn primary" id="newPlot">New plot</button>`:""}</div>${body}`;
 }
 function plotCard(p){
@@ -428,7 +446,7 @@ function viewHome(){
     ${card("cast","Factions & characters","Create the factions and characters of our story and connect them.",
       ["Guided creation: goal, means and base for factions; role, desire, fear and voice for characters.","Set leaders, members, allies and enemies.","“Use in a plot” puts a faction or character into an existing plot or starts a new one.","Each one is a Codex entry, voted on like any proposal."],`${factions().length} factions · ${characters().length} characters`)}
     ${card("plots","Plots & clocks","The stories in motion: threats that grow, faction projects, and subplots.",
-      ["Each plot has a clock: a pie split into 4, 6 or 8 slices. Fill a slice with + when the plot makes progress, erase one with − after a setback.","When the clock is full, the plot succeeds and the world changes.","Tick the portents (warning signs) as they happen in the roleplay.","Between two chapters or sessions, use “Faction turn” to move every clock at once."],n(active.length,"active plot","active plots"))}
+      ["Each plot has a clock: a pie split into 4, 6 or 8 slices. Fill a slice with + when the plot makes progress, erase one with − after a setback.","When the clock is full, the plot succeeds and the world changes.","Tick the portents (warning signs) as they happen in the roleplay.","Between two chapters or sessions, use “Faction turn” to move every clock at once.","Switch to the mind map to see how plots connect to each other and to the factions and characters involved."],n(active.length,"active plot","active plots"))}
     ${card("map","Map","Your maps, with named and tagged places linked to the Codex.",
       ["Upload your own map images, even without any names on them.","Click “Add a place”, click on the map, then name it, tag it, and add it to the Codex in the same step.","Find places by name, tag or type; hide the names when the map gets crowded.","Click a place to read its entry; from an entry, “On the map” takes you to it."],n(S.maps.size,"map","maps"))}
     ${card("references","References","Background from the games, to check facts quickly.",
@@ -594,7 +612,11 @@ function bindView(){
   on("#fType","change",e=>{S.fType=e.target.value;renderView()});
   on("#fModule","change",e=>{S.fModule=e.target.value;renderView()});
   on("#fStatus","change",e=>{S.fStatus=e.target.value;renderView()});
-  on("#pKind","change",e=>{S.pKind=e.target.value;renderView()});
+  on("#pKind","change",e=>{S.pKind=e.target.value;S.mmView=null;S.mmFocus=null;renderView()});
+  on("#pState","change",e=>{S.pState=e.target.value;S.mmView=null;S.mmFocus=null;renderView()});
+  on("#pOrigin","change",e=>{S.pOrigin=e.target.value;S.mmView=null;S.mmFocus=null;renderView()});
+  on("#mmEntries","change",e=>{S.mmEntries=e.target.checked;S.mmView=null;renderView()});
+  v.querySelectorAll("[data-plotmode]").forEach(b=>b.onclick=()=>{S.plotMode=b.dataset.plotmode;try{localStorage.setItem("plotMode",S.plotMode)}catch(_){}renderView()});
   const ph=v.querySelector("#plotHelp");if(ph)ph.addEventListener("toggle",()=>{S.plotHelpClosed=!ph.open;try{localStorage.setItem("plotHelpClosed",S.plotHelpClosed?"1":"")}catch(_){}});
   on("#newEntry","click",()=>newEntry());
   on("#newEvent","click",()=>newEntry("Event"));
@@ -714,6 +736,7 @@ function plotView(){
   ${sec("Summary",p.summary)}${sec("Goal",p.goal)}
   ${(p.portents||[]).length?`<div class="sec"><h4>Portents (warning signs, in order)</h4><ul class="portents">${p.portents.map((x,i)=>`<li class="${x.done?"done":""}"><input type="checkbox" ${x.done?"checked":""} ${S.canWrite?"":"disabled"} data-portent="${p.id}" data-i="${i}" aria-label="Portent ${i+1} has happened"><span>${esc(x.text)}</span></li>`).join("")}</ul></div>`:""}
   ${sec("If nobody stops it",p.grim)}
+  ${relatedSection(p)}
   <div class="sec"><h4>Entries involved</h4>${(p.entries||[]).length?`<div class="links">${p.entries.map(id=>`<button class="chip" data-open-entry="${id}">${esc(entryName(id))}</button>`).join("")}</div>`:`<p class="note">None linked yet.</p>`}</div>
   ${hist.length?`<div class="sec"><h4>Clock history</h4><ul class="portents">${hist.map(h=>`<li><span class="clocktxt" style="font-size:.85rem">${h.from}→${h.to}</span><span>${esc(h.note||"")} <span class="note">${new Date(h.at).toLocaleDateString()}</span></span></li>`).join("")}</ul></div>`:""}
   ${S.canWrite?`<div class="actions"><button class="btn primary" data-edit>Edit</button><button class="btn danger" data-del>${S.confirmDel?"Click again to delete":"Delete"}</button></div>`:""}`;
@@ -736,6 +759,7 @@ function plotForm(){
     <div><div style="font-weight:500;font-size:.93rem">Entries involved</div>
       <div class="links" style="margin:6px 0">${(p.entries||[]).map(id=>`<span class="chip">${esc(entryName(id))}<button type="button" class="btn ghost small" data-unlink="${id}" aria-label="Remove link">×</button></span>`).join("")||`<span class="note">None yet.</span>`}</div>
       ${others.length?`<div style="display:flex;gap:6px"><select id="f_linkpick" aria-label="Entry to link"><option value="">Choose an entry…</option>${entryOptionGroups(others)}</select><button type="button" class="btn" id="f_linkadd">Link</button></div>`:""}</div>
+    ${relatedPicker(p)}
     <div class="actions"><button class="btn primary" type="submit">Save</button><button class="btn" type="button" data-cancel>Cancel</button></div>
   </form>`;
 }
@@ -772,6 +796,7 @@ function bindDrawer(){
   const tf=d.querySelector("#turnForm");if(tf)tf.onsubmit=ev=>{ev.preventDefault();applyTurn(tf)};
   bindMapDrawer(d);
   bindUsePlot(d);
+  bindRelatedPicker(d);
   d.querySelectorAll("[data-reladd]").forEach(b=>b.onclick=()=>{const key=b.dataset.reladd;const v=d.querySelector("#relpick_"+key).value;if(!v)return;readEntryForm();S.draft[key]=[...new Set([...(S.draft[key]||[]),v])];renderDrawer()});
   d.querySelectorAll("[data-relrm]").forEach(b=>b.onclick=()=>{const key=b.dataset.relrm;readEntryForm();S.draft[key]=(S.draft[key]||[]).filter(x=>x!==b.dataset.id);renderDrawer()});
 }
@@ -1142,6 +1167,152 @@ function entryOptionGroups(list){
   const g={Factions:[],Characters:[],Places:[],Other:[]};
   list.forEach(x=>(x.type==="Faction"?g.Factions:x.type==="NPC"?g.Characters:x.type==="Location"?g.Places:g.Other).push(x));
   return Object.entries(g).filter(([,a])=>a.length).map(([k,a])=>`<optgroup label="${k}">${a.sort(byName).map(x=>`<option value="${x.id}">${esc(x.name)}${k==="Other"?` (${esc(x.type)})`:""}</option>`).join("")}</optgroup>`).join("");
+}
+
+/* ---------- plot mind map ---------- */
+const PLOT_RELS=["leads to","part of","feeds","opposes","depends on","reveals"];
+const KIND_COLORS={"Front":"var(--danger)","Faction project":"var(--official)","Subplot":"var(--project)"};
+try{S.plotMode=localStorage.getItem("plotMode")||"cards"}catch(_){S.plotMode="cards"}
+try{S.mmPos=JSON.parse(localStorage.getItem("mmPos2")||"{}")}catch(_){S.mmPos={}}
+S.mmView=null;S.mmFocus=null;S.pState=S.pState??"open";S.pOrigin=S.pOrigin||"";S.mmEntries=S.mmEntries??false;
+function saveMMPos(){try{localStorage.setItem("mmPos2",JSON.stringify(S.mmPos))}catch(_){}}
+function plotFilter(p){
+  const st=p.state||"Active";
+  if(S.pState==="open"&&st==="Resolved")return false;
+  if(S.pState==="resolved"&&st!=="Resolved")return false;
+  if(S.pKind&&p.kind!==S.pKind)return false;
+  if(S.pOrigin&&(p.origin||"New")!==S.pOrigin)return false;
+  return true;
+}
+function relatedOut(p){return (p.related||[]).filter(r=>S.plots.has(r.id))}
+function relatedIn(p){const out=[];S.plots.forEach(q=>{(q.related||[]).forEach(r=>{if(r.id===p.id)out.push({id:q.id,rel:r.rel})})});return out}
+function hashNum(s){let h=2166136261;for(const c of s)h=Math.imul(h^c.charCodeAt(0),16777619);return (h>>>0)/4294967295}
+function buildGraph(){
+  const plots=[...S.plots.values()].filter(plotFilter);const ids=new Set(plots.map(p=>p.id));
+  const nodes=new Map(),edges=[];
+  plots.forEach(p=>nodes.set("P:"+p.id,{key:"P:"+p.id,kind:"plot",ref:p}));
+  if(S.mmEntries)plots.forEach(p=>(p.entries||[]).forEach(eid=>{const e=S.entries.get(eid);if(!e)return;
+    if(!nodes.has("E:"+eid))nodes.set("E:"+eid,{key:"E:"+eid,kind:"entry",ref:e});edges.push({a:"P:"+p.id,b:"E:"+eid,type:"inv"})}));
+  plots.forEach(p=>relatedOut(p).forEach(r=>{if(ids.has(r.id))edges.push({a:"P:"+p.id,b:"P:"+r.id,type:"rel",rel:r.rel})}));
+  return {nodes:[...nodes.values()],edges};
+}
+const MM_PW=220,MM_PH=58;
+function mmKey(k){return (S.mmEntries?"E|":"P|")+k}
+function layoutGraph(g){
+  const N=g.nodes,idx=new Map(N.map((n,i)=>[n.key,i]));const R=Math.sqrt(N.length)*170;
+  const pos=N.map(n=>{const s=S.mmPos[mmKey(n.key)];if(s)return {x:s.x,y:s.y,fixed:true};
+    return {x:(hashNum(n.key)-.5)*R*2,y:(hashNum(n.key+"y")-.5)*R*1.3,fixed:false}});
+  if(pos.every(p=>p.fixed))return pos;
+  for(let it=0;it<320;it++){
+    const t=1-it/320,f=N.map(()=>({x:0,y:0}));
+    for(let i=0;i<N.length;i++)for(let j=i+1;j<N.length;j++){
+      let dx=pos[i].x-pos[j].x,dy=pos[i].y-pos[j].y,d2=dx*dx+dy*dy+.01,d=Math.sqrt(d2);
+      const big=(N[i].kind==="plot"?1:0)+(N[j].kind==="plot"?1:0);
+      const rep=(big===2?160000:big===1?50000:14000)/d2;f[i].x+=dx/d*rep;f[i].y+=dy/d*rep;f[j].x-=dx/d*rep;f[j].y-=dy/d*rep;
+    }
+    g.edges.forEach(e=>{const i=idx.get(e.a),j=idx.get(e.b);const L=e.type==="rel"?260:150;
+      const dx=pos[j].x-pos[i].x,dy=pos[j].y-pos[i].y,d=Math.hypot(dx,dy)||1,k=(d-L)*.04;
+      f[i].x+=dx/d*k;f[i].y+=dy/d*k;f[j].x-=dx/d*k;f[j].y-=dy/d*k;});
+    N.forEach((n,i)=>{f[i].x-=pos[i].x*.004;f[i].y-=pos[i].y*.006;
+      if(pos[i].fixed)return;const m=Math.min(30,Math.hypot(f[i].x,f[i].y))*t;const h=Math.hypot(f[i].x,f[i].y)||1;
+      pos[i].x+=f[i].x/h*m;pos[i].y+=f[i].y/h*m;});
+  }
+  // push overlapping boxes apart
+  const half=n=>n.kind==="plot"?{w:MM_PW/2+18,h:MM_PH/2+16}:{w:70,h:26};
+  for(let it=0;it<800;it++){let moved=false;
+    for(let i=0;i<N.length;i++)for(let j=i+1;j<N.length;j++){
+      const a=half(N[i]),b=half(N[j]);const dx=pos[j].x-pos[i].x,dy=pos[j].y-pos[i].y;
+      const ox=a.w+b.w-Math.abs(dx),oy=a.h+b.h-Math.abs(dy);if(ox<=0||oy<=0)continue;moved=true;
+      const fi=pos[i].fixed,fj=pos[j].fixed;if(fi&&fj)continue;const wi=fi?0:fj?1:.5,wj=fi?1:fj?0:.5;
+      if(ox<oy){const s=(dx>=0?1:-1)*(ox+1);pos[i].x-=s*wi;pos[j].x+=s*wj}else{const s=(dy>=0?1:-1)*(oy+1);pos[i].y-=s*wi;pos[j].y+=s*wj}}
+    if(!moved)break;}
+  N.forEach((n,i)=>{if(!pos[i].fixed)S.mmPos[mmKey(n.key)]={x:Math.round(pos[i].x),y:Math.round(pos[i].y)}});saveMMPos();
+  return pos;
+}
+function viewMindMap(){
+  return `<div class="mmwrap" id="mmwrap" tabindex="0" aria-label="Mind map of the plots"><svg id="mmsvg" width="100%" height="100%">
+    <defs><marker id="mmarrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--accent)"/></marker></defs>
+    <g id="mmg"></g></svg>
+    <div class="mmtools"><button class="btn small" data-mmzoom="1.25" aria-label="Zoom in">+</button><button class="btn small" data-mmzoom="0.8" aria-label="Zoom out">−</button><button class="btn small" id="mmFit">Fit</button><button class="btn small ghost" id="mmRelayout" title="Forget the positions and arrange everything again">Rearrange</button></div>
+  </div>
+  <div class="maplegend"><span><i style="background:var(--danger)"></i>Front</span><span><i style="background:var(--official)"></i>Faction project</span><span><i style="background:var(--project)"></i>Subplot</span><span style="opacity:.75">Dashed box: resolved</span><span><i style="background:${PIN_COLORS.Faction}"></i>Faction</span><span><i style="background:${PIN_COLORS.NPC}"></i>Character</span><span><i style="background:${PIN_COLORS.Location}"></i>Place</span><span>→ connection between plots</span></div>
+  <p class="help">Click a plot or an entry to highlight what it's connected to; click it again to open it. Drag boxes to arrange the map: your layout is remembered on this device. Connections between plots are set in each plot's form (“Connected plots”).</p>`;
+}
+function bindMindMap(){
+  const wrap=$("#mmwrap"),svg=$("#mmsvg"),G=$("#mmg");if(!wrap)return;
+  const g=buildGraph();
+  if(!g.nodes.length){wrap.innerHTML=`<div class="empty" style="margin:auto;border:0">No plot matches these filters.</div>`;return}
+  const pos=layoutGraph(g);const P=new Map(g.nodes.map((n,i)=>[n.key,pos[i]]));
+  const NS="http://www.w3.org/2000/svg";const el=(t,a)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);return e};
+  const neigh=new Set();if(S.mmFocus){neigh.add(S.mmFocus);g.edges.forEach(e=>{if(e.a===S.mmFocus)neigh.add(e.b);if(e.b===S.mmFocus)neigh.add(e.a)})}
+  const dim=k=>S.mmFocus&&!neigh.has(k);
+  const PW=MM_PW,PH=MM_PH;
+  function boxEdge(k,tx,ty){const p=P.get(k),n=g.nodes.find(x=>x.key===k);
+    if(n.kind!=="plot"){const d=Math.hypot(tx-p.x,ty-p.y)||1;return {x:p.x+(tx-p.x)/d*12,y:p.y+(ty-p.y)/d*12}}
+    const dx=tx-p.x,dy=ty-p.y;const sx=Math.abs(dx)/(PW/2+4),sy=Math.abs(dy)/(PH/2+4);const s=Math.max(sx,sy)||1;return {x:p.x+dx/s,y:p.y+dy/s}}
+  function draw(){
+    G.innerHTML="";
+    const eG=el("g",{}),nG=el("g",{}),lG=el("g",{});G.append(eG,nG,lG);
+    g.edges.forEach(e=>{const a=P.get(e.a),b=P.get(e.b);const faded=S.mmFocus&&!(e.a===S.mmFocus||e.b===S.mmFocus);
+      if(e.type==="inv"){eG.append(el("line",{x1:a.x,y1:a.y,x2:b.x,y2:b.y,stroke:"var(--line)","stroke-width":1.5,opacity:faded?.25:1}));return}
+      const s=boxEdge(e.a,b.x,b.y),t=boxEdge(e.b,a.x,a.y);
+      eG.append(el("line",{x1:s.x,y1:s.y,x2:t.x,y2:t.y,stroke:"var(--accent)","stroke-width":2.5,"marker-end":"url(#mmarrow)",opacity:faded?.25:1}));
+      const mx=(s.x+t.x)/2,my=(s.y+t.y)/2;const tx=el("text",{x:mx,y:my+4,"text-anchor":"middle",class:"mmrel",opacity:faded?.3:1});tx.textContent=e.rel;lG.append(tx);});
+    g.nodes.forEach(n=>{const p=P.get(n.key);const grp=el("g",{transform:`translate(${p.x} ${p.y})`,class:"mmnode"+(S.mmFocus===n.key?" focus":""),"data-key":n.key,opacity:dim(n.key)?.25:1,tabindex:0,role:"button","aria-label":n.ref.name});
+      if(n.kind==="plot"){const pl=n.ref,c=KIND_COLORS[pl.kind]||"var(--accent)",res=(pl.state||"Active")==="Resolved";
+        grp.append(el("rect",{x:-PW/2,y:-PH/2,width:PW,height:PH,rx:10,fill:"var(--surface)",stroke:c,"stroke-width":S.mmFocus===n.key?3.5:2,"stroke-dasharray":res?"6 4":""}));
+        grp.append(el("rect",{x:-PW/2,y:-PH/2,width:7,height:PH,rx:3,fill:c}));
+        const size=Math.max(1,pl.clockSize|0),fill=Math.min(size,pl.clockFilled|0),r=14,cx=-PW/2+30;
+        for(let i=0;i<size;i++){const a0=i/size*2*Math.PI-Math.PI/2,a1=(i+1)/size*2*Math.PI-Math.PI/2;
+          grp.append(el("path",{d:`M${cx},0 L${cx+r*Math.cos(a0)},${r*Math.sin(a0)} A${r},${r} 0 0 1 ${cx+r*Math.cos(a1)},${r*Math.sin(a1)} Z`,fill:i<fill?c:"var(--sunk)",stroke:"var(--surface)","stroke-width":1.2}))}
+        const nm=el("text",{x:-PW/2+52,y:-4,class:"mmtitle"});nm.textContent=pl.name.length>21?pl.name.slice(0,20)+"…":pl.name;
+        const sub=el("text",{x:-PW/2+52,y:14,class:"mmsub"});sub.textContent=`${pl.kind} · ${fill}/${size}`;
+        const ttl=el("title",{});ttl.textContent=pl.name;grp.append(nm,sub,ttl);
+      }else{const e=n.ref;grp.append(el("circle",{r:10,fill:PIN_COLORS[e.type]||"var(--muted)",stroke:"var(--surface)","stroke-width":2}));
+        const t=el("text",{y:26,"text-anchor":"middle",class:"mmlabel"});t.textContent=e.name.length>26?e.name.slice(0,25)+"…":e.name;grp.append(t);}
+      nG.append(grp);});
+    applyView();
+  }
+  function applyView(){const v=S.mmView;if(v)G.setAttribute("transform",`translate(${v.x} ${v.y}) scale(${v.k})`)}
+  function fit(){const xs=[...P.values()].map(p=>p.x),ys=[...P.values()].map(p=>p.y);
+    const minx=Math.min(...xs)-PW/2-20,maxx=Math.max(...xs)+PW/2+20,miny=Math.min(...ys)-PH/2-30,maxy=Math.max(...ys)+PH/2+30;
+    const W=wrap.clientWidth,H=wrap.clientHeight;const k=Math.min(1.4,Math.min(W/(maxx-minx),H/(maxy-miny)));
+    S.mmView={k,x:W/2-(minx+maxx)/2*k,y:H/2-(miny+maxy)/2*k};applyView()}
+  if(!S.mmView)fit();
+  draw();
+  const toWorld=(cx,cy)=>{const r=svg.getBoundingClientRect(),v=S.mmView;return {x:(cx-r.left-v.x)/v.k,y:(cy-r.top-v.y)/v.k}};
+  let drag=null;
+  svg.addEventListener("pointerdown",e=>{const nodeEl=e.target.closest(".mmnode");const w=toWorld(e.clientX,e.clientY);
+    drag={key:nodeEl?nodeEl.dataset.key:null,sx:e.clientX,sy:e.clientY,moved:false,vx:S.mmView.x,vy:S.mmView.y,ox:nodeEl?P.get(nodeEl.dataset.key).x-w.x:0,oy:nodeEl?P.get(nodeEl.dataset.key).y-w.y:0};
+    svg.setPointerCapture(e.pointerId)});
+  svg.addEventListener("pointermove",e=>{if(!drag)return;if(Math.abs(e.clientX-drag.sx)+Math.abs(e.clientY-drag.sy)>4)drag.moved=true;if(!drag.moved)return;
+    if(drag.key){const w=toWorld(e.clientX,e.clientY);const p=P.get(drag.key);p.x=w.x+drag.ox;p.y=w.y+drag.oy;draw();wrap.classList.add("dragging")}
+    else{S.mmView.x=drag.vx+(e.clientX-drag.sx);S.mmView.y=drag.vy+(e.clientY-drag.sy);applyView();wrap.classList.add("dragging")}});
+  svg.addEventListener("pointerup",()=>{if(!drag)return;const d=drag;drag=null;wrap.classList.remove("dragging");
+    if(d.moved){if(d.key){const p=P.get(d.key);S.mmPos[mmKey(d.key)]={x:Math.round(p.x),y:Math.round(p.y)};saveMMPos()}return}
+    if(!d.key){if(S.mmFocus){S.mmFocus=null;draw()}return}
+    if(S.mmFocus===d.key){const [t,id]=d.key.split(":");openDrawer(t==="P"?{kind:"plot",id}:{kind:"entry",id});return}
+    S.mmFocus=d.key;draw();});
+  svg.addEventListener("keydown",e=>{const n=e.target.closest&&e.target.closest(".mmnode");if(n&&(e.key==="Enter"||e.key===" ")){e.preventDefault();const [t,id]=n.dataset.key.split(":");openDrawer(t==="P"?{kind:"plot",id}:{kind:"entry",id})}});
+  svg.addEventListener("wheel",e=>{e.preventDefault();const r=svg.getBoundingClientRect(),v=S.mmView,f=e.deltaY<0?1.12:1/1.12,nk=Math.max(.2,Math.min(3,v.k*f));
+    const cx=e.clientX-r.left,cy=e.clientY-r.top;v.x=cx-(cx-v.x)*(nk/v.k);v.y=cy-(cy-v.y)*(nk/v.k);v.k=nk;applyView()},{passive:false});
+  wrap.querySelectorAll("[data-mmzoom]").forEach(b=>b.onclick=()=>{const v=S.mmView,f=+b.dataset.mmzoom,nk=Math.max(.2,Math.min(3,v.k*f)),cx=wrap.clientWidth/2,cy=wrap.clientHeight/2;v.x=cx-(cx-v.x)*(nk/v.k);v.y=cy-(cy-v.y)*(nk/v.k);v.k=nk;applyView()});
+  $("#mmFit").onclick=fit;
+  $("#mmRelayout").onclick=()=>{g.nodes.forEach(n=>delete S.mmPos[mmKey(n.key)]);saveMMPos();S.mmView=null;S.mmFocus=null;renderView()};
+}
+function relatedSection(p){
+  const out=relatedOut(p),inn=relatedIn(p);if(!out.length&&!inn.length)return "";
+  return `<div class="sec"><h4>Connected plots</h4><ul class="portents">${out.map(r=>`<li><span class="note">${esc(r.rel)} →</span><button class="chip" data-open-plot="${r.id}">${esc(S.plots.get(r.id).name)}</button></li>`).join("")}${inn.map(r=>`<li><button class="chip" data-open-plot="${r.id}">${esc(S.plots.get(r.id).name)}</button><span class="note">${esc(r.rel)} this plot</span></li>`).join("")}</ul></div>`;
+}
+function relatedPicker(p){
+  const cur=(p.related||[]).filter(r=>S.plots.has(r.id));const avail=[...S.plots.values()].filter(q=>q.id!==p.id&&!cur.some(r=>r.id===q.id)).sort(byName);
+  return `<div><div style="font-weight:500;font-size:.93rem">Connected plots <span class="hint" style="font-weight:400;color:var(--muted)">How this plot relates to others; shown as arrows on the mind map</span></div>
+    <div class="links" style="margin:6px 0">${cur.map(r=>`<span class="chip">This plot ${esc(r.rel)} ${esc(S.plots.get(r.id).name)}<button type="button" class="btn ghost small" data-relplotrm="${r.id}" aria-label="Remove connection">×</button></span>`).join("")||`<span class="note">None yet.</span>`}</div>
+    ${avail.length?`<div style="display:flex;gap:6px;flex-wrap:wrap"><select id="rp_rel" aria-label="Kind of connection" style="width:auto">${PLOT_RELS.map(r=>`<option>${r}</option>`).join("")}</select><select id="rp_plot" aria-label="Other plot" style="flex:1;min-width:0"><option value="">Choose a plot…</option>${avail.map(q=>`<option value="${q.id}">${esc(q.name)}</option>`).join("")}</select><button type="button" class="btn" id="rp_add">Connect</button></div>`:""}</div>`;
+}
+function bindRelatedPicker(d){
+  const a=d.querySelector("#rp_add");if(a)a.onclick=()=>{const id=d.querySelector("#rp_plot").value,rel=d.querySelector("#rp_rel").value;if(!id)return;readPlotForm();S.draft.related=[...(S.draft.related||[]).filter(r=>r.id!==id),{id,rel}];renderDrawer()};
+  d.querySelectorAll("[data-relplotrm]").forEach(b=>b.onclick=()=>{readPlotForm();S.draft.related=(S.draft.related||[]).filter(r=>r.id!==b.dataset.relplotrm);renderDrawer()});
 }
 
 /* ---------- votes ---------- */
