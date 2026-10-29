@@ -145,6 +145,12 @@ body{margin:0}
 .attention{background:var(--accent-soft);border:1px solid var(--line);border-radius:var(--r);padding:12px 16px;margin-bottom:8px;max-width:720px}
 .attention ul{margin:4px 0 0;padding-left:18px}
 .attention a{color:var(--ink)}
+.lore{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:16px;max-width:820px}
+.lore li{display:grid;grid-template-columns:120px minmax(0,1fr);gap:14px;border-top:1px solid var(--line);padding-top:12px}
+@media (max-width:560px){.lore li{grid-template-columns:1fr;gap:2px}}
+.lore-when{font-family:var(--f-mono);color:var(--accent);font-size:.85rem;padding-top:4px}
+.lore h4{margin:0 0 4px;font-family:var(--f-display);font-size:1.2rem}
+.lore p{margin:0 0 6px;max-width:65ch}
 .steps{max-width:65ch;padding-left:22px;display:flex;flex-direction:column;gap:6px;margin:0}
 </style>
 </head>
@@ -175,6 +181,7 @@ body{margin:0}
       <a href="#plots" data-view="plots">Plots &amp; clocks</a>
       <a href="#timeline" data-view="timeline">Timeline</a>
       <a href="#canon" data-view="canon">Canon</a>
+      <a href="#references" data-view="references">References</a>
       <a href="#team" data-view="team">Team</a>
     </nav>
     <div class="tools"><span class="who" id="who"></span><button class="btn small" id="signOut">Sign out</button></div>
@@ -240,7 +247,7 @@ function clockSVG(filled,size,px=56){
 }
 
 /* ---------- routing ---------- */
-function route(){const h=location.hash.replace("#","");S.view=["home","codex","plots","timeline","canon","team"].includes(h)?h:"home";
+function route(){const h=location.hash.replace("#","");S.view=["home","codex","plots","timeline","canon","references","team"].includes(h)?h:"home";
   document.querySelectorAll("nav.tabs a").forEach(a=>{if(a.dataset.view===S.view)a.setAttribute("aria-current","page");else a.removeAttribute("aria-current")});
   renderView();}
 window.addEventListener("hashchange",route);
@@ -253,6 +260,7 @@ function renderView(){
   else if(S.view==="plots")v.innerHTML=viewPlots();
   else if(S.view==="timeline")v.innerHTML=viewTimeline();
   else if(S.view==="team")v.innerHTML=viewTeam();
+  else if(S.view==="references")v.innerHTML=viewReferences();
   else v.innerHTML=viewCanon();
   bindView();
 }
@@ -361,6 +369,8 @@ function viewHome(){
       ["Years are in DR (Dalereckoning). BG3 ends in 1492 DR.","Add an event with “New event”, or create a Codex entry of type Event with a year."],n(events,"event","events"))}
     ${card("canon","Canon","Where the team decides what is official.",
       ["New ideas start as <b>Proposal</b>. Approve them to make them <b>Project canon</b>, or discard them.","<b>Official canon</b> means it comes from the games or D&amp;D books.","The contradictions register records each time we knowingly change official lore, and why.","Download a backup of the whole bible from the bottom of this page."],proposals?n(proposals,"to review","to review"):"Up to date")}
+    ${card("references","References","Background from the games, to check facts quickly.",
+      ["A summary of the lore of Baldur's Gate 1, 2, Throne of Bhaal and 3.","The Legends: BG3's heroes, remembered but taking no action in our story.","Supporting and minor characters, with their status at the end of BG3.","Add any of them to the Codex in one click."],`${NPCS.length+LEGENDS.length} characters`)}
     ${card("team","Team","Who can open the bible.",
       ["Add a colleague's email, then send them the address and the invite code shown next to their name.","The first time, they click “Create your password” and enter the code.","Forgot a password? Remove the person and add them again for a new code."],n(joined,"member","members"))}
   </div>
@@ -371,6 +381,114 @@ function viewHome(){
     <li><b>Review your teammates' proposals</b> in Canon and approve the ones you agree on.</li>
     <li><b>Track the stories</b> in Plots &amp; clocks, and run a faction turn after each roleplay session.</li>
   </ol>`;
+}
+/* ---------- references (static, from the games) ---------- */
+const LORE = [
+  {id:"bg1",title:"Baldur's Gate",when:"1368 DR",text:[
+    "An iron shortage pushes Baldur's Gate and Amn toward war. The hero, raised as Gorion's ward in the library-fortress of Candlekeep, turns out to be a Bhaalspawn: a mortal child of Bhaal, god of murder, who foresaw his own death during the Time of Troubles and scattered his divine essence into children to bring himself back.",
+    "Another Bhaalspawn, Sarevok, created the iron crisis through the Iron Throne merchant cartel to start a bloodbath and become the new Lord of Murder. He kills Gorion. The hero exposes him and defeats him in Bhaal's temple beneath the city.",
+    "Expansions: Tales of the Sword Coast adds Durlag's Tower and Balduran's Isle. Siege of Dragonspear follows Caelar Argent's crusade toward a portal to Avernus, and ends with the hero framed and fleeing the city."]},
+  {id:"bg2",title:"Baldur's Gate II: Shadows of Amn",when:"1369 DR",text:[
+    "The hero and their foster sister Imoen are captured by Jon Irenicus, an exiled elven mage who steals the hero's divine soul to become a god himself.",
+    "The chase leads through Athkatla, the asylum of Spellhold, the Underdark and the elven city of Suldanessellar, and finally to Hell, where Irenicus is defeated. Along the way: the Shadow Thieves, Bodhi's vampire guild, the Cowled Wizards and many side quests."]},
+  {id:"tob",title:"Throne of Bhaal",when:"Shortly after",text:[
+    "The remaining Bhaalspawn are hunted. The Five, the most powerful of them, are destroyed one by one. Behind them, Amelyssan, a priestess of Bhaal, plans to absorb their essence and take Bhaal's place.",
+    "The hero defeats her and chooses to ascend to godhood or give up the divine essence and live as a mortal. Bhaal stays dead for now."]},
+  {id:"between",title:"Between the games",when:"About 120 years",text:[
+    "The Realms are reshaped by the Spellplague and later the Sundering. Bhaal eventually returns to divinity, helped by the murders of his followers.",
+    "Elturel, a city near Baldur's Gate, is dragged into Avernus, the first layer of Hell, and many of its people, among them tieflings, flee toward Baldur's Gate as refugees."]},
+  {id:"bg3",title:"Baldur's Gate 3",when:"1492 DR",text:[
+    "A mind flayer ship abducts the heroes and implants illithid tadpoles in them. The cult of the Absolute, which controls the infected, is really an Elder Brain kept in check by three Chosen of the Dead Three: Ketheric Thorm (Myrkul), Enver Gortash (Bane) and Orin the Red (Bhaal), using the Netherstones.",
+    "The heroes cross the Shadow-Cursed Lands, free Selûne's daughter Aylin, defeat Ketheric, then face Gortash and Orin in Baldur's Gate. The Elder Brain breaks free. The Emperor, revealed to be Balduran, the city's legendary founder turned mind flayer, and the githyanki prince Orpheus become key to the final battle.",
+    "The Netherbrain is destroyed above the Upper City and the tadpole threat ends. The city survives, but its leadership is gutted and its people scarred."]}
+];
+const LEGENDS = [
+  {n:"The Hero of Baldur's Gate",g:"BG3",r:"The leader of the party that destroyed the Netherbrain (Tav, or the Dark Urge, a Bhaalspawn).",say:"Name, face and fate change with every telling. Some call them a saviour, others whisper about Bhaal."},
+  {n:"Gorion's Ward",g:"BG1–BG2",r:"The Bhaalspawn hero who defeated Sarevok, Irenicus and Amelyssan, 120 years earlier.",say:"Remembered as a god by some, as a mortal who refused godhood by others."},
+  {n:"Astarion",g:"BG3",r:"Vampire spawn who freed himself from his master Cazador.",say:"Rumoured to walk in daylight, or to rule the night beneath the city, depending on who tells it."},
+  {n:"Gale of Waterdeep",g:"BG3",r:"Wizard once chosen by Mystra, linked to the Crown of Karsus.",say:"Some say he became a god, others that he went home to teach."},
+  {n:"Karlach",g:"BG3",r:"Tiefling warrior with an infernal engine for a heart, who escaped Zariel's army in Avernus.",say:"Songs end with her return to Avernus, or with her finding a way to live on Toril."},
+  {n:"Lae'zel",g:"BG3",r:"Githyanki warrior who turned against Vlaakith, the lich-queen.",say:"Said to lead githyanki who no longer serve Vlaakith."},
+  {n:"Shadowheart",g:"BG3",r:"Half-elf cleric who broke with Shar, or embraced her.",say:"Both the Sharrans and the Selûnites claim her story."},
+  {n:"Wyll Ravengard",g:"BG3",r:"The Blade of Frontiers, son of Grand Duke Ulder Ravengard, bound by a pact to the devil Mizora.",say:"Children play \"Blade of Frontiers\" in the Lower City."},
+  {n:"Halsin",g:"BG3",r:"Archdruid of the Emerald Grove who helped lift the Shadow Curse.",say:"Linked to the slow healing of the Shadow-Cursed Lands."},
+  {n:"Minthara",g:"BG3",r:"Drow paladin who served the Absolute, then turned against it.",say:"Her name divides the Underdark."},
+  {n:"Jaheira",g:"BG1–BG3",r:"Half-elf Harper and druid, companion of Gorion's Ward and later of the BG3 heroes.",say:"A living legend of two generations of heroes."},
+  {n:"Minsc and Boo",g:"BG1–BG3",r:"Rashemi ranger and his \"miniature giant space hamster\", companions of both generations of heroes.",say:"Every tavern has a Minsc story, most of them about Boo."}
+];
+const NPCS = [
+  {n:"Sarevok Anchev",g:"BG1, BG3",r:"Bhaalspawn villain of BG1, later leader of Bhaal's Murder Tribunal in BG3.",f:"Varies by ending: killed or alive."},
+  {n:"Imoen",g:"BG1–BG2",r:"Bhaalspawn, foster sister of Gorion's Ward.",f:"Not shown in BG3."},
+  {n:"Viconia DeVir",g:"BG1–BG3",r:"Drow cleric, once a companion; in BG3, Mother Superior of Shar's House of Grief.",f:"Varies by ending: killed or alive."},
+  {n:"Jon Irenicus",g:"BG2",r:"Exiled elven mage who stole the hero's soul.",f:"Dead."},
+  {n:"Bodhi",g:"BG2",r:"Irenicus's vampire sister, head of a vampire guild in Athkatla.",f:"Dead."},
+  {n:"Amelyssan",g:"Throne of Bhaal",r:"Priestess of Bhaal who tried to take his place.",f:"Defeated."},
+  {n:"Elminster",g:"BG3 (and the wider Realms)",r:"Chosen of Mystra, the Sage of Shadowdale. Visits the BG3 camp.",f:"Alive."},
+  {n:"Ketheric Thorm",g:"BG3",r:"Chosen of Myrkul, lord of Moonrise Towers.",f:"Dead."},
+  {n:"Enver Gortash",g:"BG3",r:"Chosen of Bane, archduke of Baldur's Gate, creator of the Steel Watch.",f:"Dead."},
+  {n:"Orin the Red",g:"BG3",r:"Chosen of Bhaal, a shapeshifting assassin.",f:"Dead."},
+  {n:"The Emperor (Balduran)",g:"BG3",r:"Mind flayer who was once Balduran, founder of Baldur's Gate.",f:"Varies by ending."},
+  {n:"Prince Orpheus",g:"BG3",r:"Githyanki prince imprisoned by Vlaakith.",f:"Varies by ending."},
+  {n:"Vlaakith",g:"BG3",r:"Lich-queen of the githyanki.",f:"Alive, her hold on the githyanki shaken."},
+  {n:"Grand Duke Ulder Ravengard",g:"BG3",r:"Head of the Flaming Fist and father of Wyll.",f:"Varies by ending: rescued or lost."},
+  {n:"Florrick",g:"BG3",r:"Flaming Fist officer who supports the heroes.",f:"Varies by ending."},
+  {n:"Nine-Fingers Keene",g:"BG3",r:"Guildmaster of the Guild, Baldur's Gate's thieves.",f:"Alive."},
+  {n:"Raphael",g:"BG3",r:"Cambion devil of the House of Hope who wanted the Crown of Karsus.",f:"Varies by ending: killed or alive."},
+  {n:"Mizora",g:"BG3",r:"Cambion devil, Wyll's patron, serving Zariel.",f:"Alive."},
+  {n:"Cazador Szarr",g:"BG3",r:"Vampire lord who held thousands of spawn beneath his palace.",f:"Dead."},
+  {n:"Zevlor",g:"BG3",r:"Former Hellrider, leader of the Elturian tiefling refugees.",f:"Varies by ending."},
+  {n:"Rolan, Cal and Lia",g:"BG3",r:"Tiefling siblings among the refugees; Rolan is a gifted young wizard.",f:"Varies by ending."},
+  {n:"Arabella",g:"BG3",r:"Tiefling child with a gift for druidic magic.",f:"Varies by ending."},
+  {n:"Alfira",g:"BG3",r:"Tiefling bard among the refugees.",f:"Varies by ending."},
+  {n:"Dammon",g:"BG3",r:"Tiefling blacksmith who once worked on infernal engines in Avernus.",f:"Alive."},
+  {n:"Mol",g:"BG3",r:"Tiefling child, leader of a band of young thieves.",f:"Alive."},
+  {n:"Kagha",g:"BG3",r:"Druid of the Emerald Grove who wanted the refugees gone.",f:"Varies by ending."},
+  {n:"Auntie Ethel",g:"BG3",r:"Green hag who trades favours for terrible prices.",f:"Varies by ending."},
+  {n:"Mayrina",g:"BG3",r:"Young woman held captive by Auntie Ethel.",f:"Varies by ending."},
+  {n:"Isobel Thorm",g:"BG3",r:"Selûnite cleric, daughter of Ketheric, protector of Last Light Inn.",f:"Varies by ending."},
+  {n:"Aylin, the Nightsong",g:"BG3",r:"Aasimar daughter of Selûne, imprisoned by Shar's faithful.",f:"Freed or lost, by ending."},
+  {n:"Lorroakan",g:"BG3",r:"Wizard of Sorcerous Sundries, the city's magic shop.",f:"Varies by ending."},
+  {n:"Omeluum",g:"BG3",r:"Free mind flayer, scholar of the Society of Brilliance.",f:"Alive."},
+  {n:"Volo",g:"BG3 (and the wider Realms)",r:"Travelling author and bard, rarely reliable.",f:"Alive."},
+  {n:"Withers",g:"BG3",r:"Mysterious undead figure who helps the party; secretly the god Jergal.",f:"Alive."},
+  {n:"Ansur",g:"BG3",r:"Bronze dragon, companion of Balduran, found in the Wyrmway.",f:"Dead."}
+];
+function refKey(n){return "ref-"+n.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")}
+function inCodex(n){const k=refKey(n);return S.entries.has(k)?k:([...S.entries.values()].find(e=>(e.name||"").toLowerCase()===n.toLowerCase())||{}).id}
+function refAction(p,legend){const id=inCodex(p.n);
+  if(id)return `<button class="btn small" data-open-entry="${id}">In Codex</button>`;
+  return S.canWrite?`<button class="btn small" data-addref="${esc((legend?"L:":"N:")+p.n)}">Add to Codex</button>`:"";}
+async function addRefToCodex(key){
+  const legend=key.startsWith("L:"),name=key.slice(2);const p=(legend?LEGENDS:NPCS).find(x=>x.n===name);if(!p)return;
+  const id=refKey(p.n);
+  const e={id,type:"NPC",name:p.n,module:9,status:"Official canon",summary:p.r,source:p.g,
+    changed:legend?"A legend of BG3. Remembered and talked about, but takes no action in our story.":"Status at the end of BG3: "+p.f,
+    public:legend?p.say:"",secret:"",fields:{Role:legend?"Legend (no actions in the current lore)":p.r},links:[],tags:legend?["legend"]:[]};
+  if(await write("entries/"+id,stamp(e),"Added to the Codex")){S.entries.set(id,clean(e));renderView();}
+}
+function viewReferences(){
+  const q=(S.refq||"").toLowerCase(),gf=S.refGame||"";
+  const games=p=>p.g.replace("BG1–BG3","BG1, BG2, BG3").replace("BG1–BG2","BG1, BG2");
+  const match=p=>(!q||(p.n+" "+p.r).toLowerCase().includes(q))&&(!gf||games(p).includes(gf));
+  const npcs=NPCS.filter(match);
+  return `<h2 class="view">References</h2>
+  <p class="lede">Background from the three games, for quick reference. This page is read-only; to use a character in our story, add them to the Codex and work on them there.</p>
+  <div class="bar"><button class="btn small" data-jump="ref-lore">Lore summary</button><button class="btn small" data-jump="ref-legends">Legends</button><button class="btn small" data-jump="ref-npcs">Characters</button></div>
+
+  <h3 class="sub" id="ref-lore">Lore summary</h3>
+  <ol class="lore">${LORE.map(l=>`<li><div class="lore-when">${esc(l.when)}</div><div><h4>${esc(l.title)}</h4>${l.text.map(t=>`<p>${esc(t)}</p>`).join("")}</div></li>`).join("")}</ol>
+
+  <h3 class="sub" id="ref-legends">Legends: the heroes of BG3</h3>
+  <p class="help">In our lore, the main characters of BG3 are legends. People remember them, tell stories about them, argue about what really happened, but they take <b>no action</b> in the current story. How each one is remembered is ours to decide.</p>
+  <div class="hgrid">${LEGENDS.map(p=>`<article class="hcard"><div class="hcard-top"><h3 style="font-size:1.1rem">${esc(p.n)}</h3><span class="chip type">${esc(p.g)}</span></div><p>${esc(p.r)}</p><p class="note" style="margin:0"><i>${esc(p.say)}</i></p><div>${refAction(p,true)}</div></article>`).join("")}</div>
+
+  <h3 class="sub" id="ref-npcs">Characters from the games</h3>
+  <p class="help">Supporting and minor characters. Many fates depend on the player's choices in BG3; for each “Varies by ending”, the team picks our version and notes it in the Codex.</p>
+  <div class="bar"><input type="search" id="refq" placeholder="Search characters" value="${esc(S.refq||"")}" aria-label="Search characters">
+    <select id="refGame" aria-label="Filter by game"><option value="">All games</option>${["BG1","BG2","Throne of Bhaal","BG3"].map(g=>`<option ${gf===g?"selected":""}>${g}</option>`).join("")}</select></div>
+  ${npcs.length?`<div class="tablewrap"><table><thead><tr><th>Character</th><th>Games</th><th>Who they are</th><th>At the end of BG3</th><th></th></tr></thead><tbody>
+    ${npcs.map(p=>`<tr><td><b>${esc(p.n)}</b></td><td style="white-space:nowrap">${esc(p.g)}</td><td>${esc(p.r)}</td><td>${esc(p.f)}</td><td>${refAction(p,false)}</td></tr>`).join("")}
+  </tbody></table></div>`:`<div class="empty">No character matches.</div>`}`;
 }
 function viewTeam(){
   const ms=[...S.members.values()].sort((a,b)=>a.email.localeCompare(b.email));
@@ -396,6 +514,10 @@ function bindView(){
   on("#exportBtn","click",exportAll);
   on("#regForm","submit",addReg);
   on("#memberForm","submit",addMember);
+  on("#refq","input",e=>{S.refq=e.target.value;const pos=e.target.selectionStart;renderView();const q=$("#refq");q.focus();q.setSelectionRange(pos,pos)});
+  on("#refGame","change",e=>{S.refGame=e.target.value;renderView()});
+  v.querySelectorAll("[data-jump]").forEach(b=>b.onclick=()=>{const t=document.getElementById(b.dataset.jump);if(t)t.scrollIntoView({behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"})});
+  v.querySelectorAll("[data-addref]").forEach(b=>b.onclick=()=>addRefToCodex(b.dataset.addref));
   v.querySelectorAll("[data-delmember]").forEach(b=>b.onclick=()=>delMember(b.dataset.delmember));
   v.querySelectorAll("[data-newinvite]").forEach(b=>b.onclick=()=>newInvite(b.dataset.newinvite));
 }
