@@ -311,10 +311,11 @@ function plotCard(p){
     ${(p.entries||[]).length?`<div class="links">${p.entries.map(id=>`<button class="chip" data-open-entry="${id}">${esc(entryName(id))}</button>`).join("")}</div>`:""}
   </article>`;
 }
+function yearText(e){if(e.yearLabel)return e.yearLabel;return e.year!=null&&e.year!==""?e.year+" DR":"Year unknown"}
 function viewTimeline(){
-  const ev=[...S.entries.values()].filter(e=>e.type==="Event").sort((a,b)=>(a.year??1e9)-(b.year??1e9)||byName(a,b));
+  const ev=[...S.entries.values()].filter(e=>e.type==="Event").sort((a,b)=>(a.year??1e9)-(b.year??1e9)||((a.order??0)-(b.order??0))||byName(a,b));
   const body=!ev.length?`<div class="empty"><b>No events yet</b>Create an entry of type “Event” with a year in DR and it appears here, in order.</div>`
-    :`<ol class="timeline">`+ev.map(e=>`<li><span class="yr">${e.year!=null&&e.year!==""?esc(e.year)+" DR":"Year unknown"}</span> ${statusChip(e.status)}<br><button data-open-entry="${e.id}">${esc(e.name)}</button>${e.summary?`<div class="note">${esc(e.summary)}</div>`:""}</li>`).join("")+`</ol>`;
+    :`<ol class="timeline">`+ev.map(e=>`<li><span class="yr">${esc(yearText(e))}</span> ${statusChip(e.status)}<br><button data-open-entry="${e.id}">${esc(e.name)}</button>${e.summary?`<div class="note">${esc(e.summary)}</div>`:""}</li>`).join("")+`</ol>`;
   return `<h2 class="view">Timeline</h2><p class="lede">Every Event entry, in year order. BG3 ends in 1492 DR; your story starts wherever the team decides.</p>
   ${S.canWrite?`<div class="bar"><button class="btn primary" id="newEvent">New event</button></div>`:""}${body}`;
 }
@@ -587,7 +588,7 @@ function entryView(){
   const fields=(TYPES[e.type]?.fields||[]).map(f=>sec(f,e.fields?.[f])).join("");
   const by=e.updatedBy&&e.updatedBy!=="setup"?e.updatedBy:"";
   return `<div class="dhead"><div><h2>${esc(e.name||"Untitled")}</h2>${e.nameFr?`<div class="fr">${esc(e.nameFr)}</div>`:""}</div>${closeBtn()}</div>
-  <div class="chips"><span class="chip type">${esc(e.type)}</span>${e.module?`<span class="chip">${e.module}. ${esc(MODULES[e.module-1])}</span>`:""}${statusChip(e.status)}${e.type==="Event"&&e.year!=null&&e.year!==""?`<span class="chip">${esc(e.year)} DR</span>`:""}</div>
+  <div class="chips"><span class="chip type">${esc(e.type)}</span>${e.module?`<span class="chip">${e.module}. ${esc(MODULES[e.module-1])}</span>`:""}${statusChip(e.status)}${e.type==="Event"&&(e.yearLabel||(e.year!=null&&e.year!==""))?`<span class="chip">${esc(yearText(e))}</span>`:""}</div>
   ${sec("Summary",e.summary)}${sec("What BG3 changed",e.changed)}${sec("Public part",e.public)}${sec("Secret part",e.secret,"secret")}${fields}${sec("Canon source",e.source)}
   ${(e.tags||[]).length?`<div class="sec"><h4>Tags</h4><div class="links">${e.tags.map(t=>`<span class="chip">${esc(t)}</span>`).join("")}</div></div>`:""}
   <div class="sec"><h4>Linked entries</h4>${(e.links||[]).length?`<div class="links">${e.links.map(id=>`<button class="chip" data-open-entry="${id}">${esc(entryName(id))}</button>`).join("")}</div>`:`<p class="note">None yet.</p>`}</div>
@@ -606,7 +607,8 @@ function entryForm(){
     <label>Name<input type="text" id="f_name" value="${esc(e.name)}" required></label>
     <label>French name <span class="hint">Optional, for the glossary</span><input type="text" id="f_nameFr" value="${esc(e.nameFr)}"></label>
     <div class="two"><label>Module${sel("f_module",MODULES.map((m,i)=>({v:i+1,l:`${i+1}. ${m}`})),e.module||DEFAULT_MODULE[type])}</label>
-      ${type==="Event"?`<label>Year (DR)<input type="number" id="f_year" value="${esc(e.year)}" placeholder="1492"></label>`:`<label>Tags <span class="hint">Comma separated</span><input type="text" id="f_tags" value="${esc((e.tags||[]).join(", "))}"></label>`}</div>
+      ${type==="Event"?`<label>Year (DR) <span class="hint">Used for ordering</span><input type="number" id="f_year" value="${esc(e.year)}" placeholder="1492"></label>`:`<label>Tags <span class="hint">Comma separated</span><input type="text" id="f_tags" value="${esc((e.tags||[]).join(", "))}"></label>`}</div>
+    ${type==="Event"?`<label>Date as shown <span class="hint">Optional, e.g. “Shortly before 1492 DR”. Leave empty to show the year.</span><input type="text" id="f_yearLabel" value="${esc(e.yearLabel)}"></label>`:""}
     <label>Summary <span class="hint">One or two sentences</span><textarea id="f_summary">${esc(e.summary)}</textarea></label>
     <label>What BG3 changed <span class="hint">How did the events of BG3 affect this?</span><textarea id="f_changed">${esc(e.changed)}</textarea></label>
     <label>Public part <span class="hint">What most people know</span><textarea id="f_public">${esc(e.public)}</textarea></label>
@@ -625,6 +627,7 @@ function readEntryForm(){
   d.name=g("f_name").trim();d.nameFr=g("f_nameFr").trim();d.status=g("f_status");d.module=+g("f_module");
   d.summary=g("f_summary");d.changed=g("f_changed");d.public=g("f_public");d.secret=g("f_secret");d.source=g("f_source");
   if(g("f_year")!==undefined)d.year=g("f_year")===""?null:+g("f_year");
+  if(g("f_yearLabel")!==undefined)d.yearLabel=g("f_yearLabel").trim();
   if(g("f_tags")!==undefined)d.tags=g("f_tags").split(",").map(s=>s.trim()).filter(Boolean);
   d.fields=d.fields||{};(TYPES[prevType]?.fields||[]).forEach((f,i)=>{const v=g("ff_"+i);if(v!==undefined)d.fields[f]=v});
   d.type=type;return {typeChanged:type!==prevType};
