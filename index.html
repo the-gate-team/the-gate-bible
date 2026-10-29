@@ -1,0 +1,612 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>The Gate Bible</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya+SC:wght@500;700&family=Alegreya+Sans:ital,wght@0,400;0,500;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a codex — sticky tab bar, a working list on the left, the open page in a side drawer (full screen on phones). */
+:root{
+  --bg:#eceff2; --surface:#fbfcfd; --sunk:#e2e6eb; --ink:#1c2230; --muted:#5d6676; --line:#d3d8e0;
+  --accent:#8a561c; --accent-soft:#f2e6d6; --accent-ink:#ffffff;
+  --official:#345f9e; --project:#2c7a57; --proposal:#a86d12; --discarded:#7b8494; --danger:#a33a3a;
+  --f-display:"Alegreya SC", Georgia, "Times New Roman", serif;
+  --f-body:"Alegreya Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono:"IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  --r:6px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#11141b; --surface:#191e28; --sunk:#232937; --ink:#e5e8ee; --muted:#9aa3b3; --line:#2c3341;
+  --accent:#d4a259; --accent-soft:#2f2717; --accent-ink:#1b1408;
+  --official:#7fa6e0; --project:#6cc49a; --proposal:#e0a84c; --discarded:#8e97a7; --danger:#e07a7a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#11141b; --surface:#191e28; --sunk:#232937; --ink:#e5e8ee; --muted:#9aa3b3; --line:#2c3341;
+  --accent:#d4a259; --accent-soft:#2f2717; --accent-ink:#1b1408;
+  --official:#7fa6e0; --project:#6cc49a; --proposal:#e0a84c; --discarded:#8e97a7; --danger:#e07a7a; color-scheme:dark}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.5}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+*{box-sizing:border-box}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
+.top{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding-block:12px}
+.brand{font-family:var(--f-display);font-size:1.5rem;font-weight:700;letter-spacing:.02em;margin:0;line-height:1.1}
+.brand small{display:block;font-family:var(--f-mono);font-size:.7rem;color:var(--muted);letter-spacing:.06em;font-weight:400}
+nav.tabs{display:flex;gap:4px;flex-wrap:wrap;margin-left:auto}
+nav.tabs a{padding:6px 12px;border-radius:var(--r);text-decoration:none;color:var(--muted);font-weight:500}
+nav.tabs a[aria-current="page"]{background:var(--accent-soft);color:var(--ink)}
+.tools{display:flex;gap:8px;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:var(--r);padding:6px 12px;cursor:pointer;font-weight:500}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.danger{color:var(--danger);border-color:var(--danger)}
+.btn.ghost{border-color:transparent;background:transparent}
+.btn.small{padding:2px 8px;font-size:.9rem}
+.btn[disabled]{opacity:.5;cursor:default}
+main{padding-block:20px 60px}
+.layout{display:grid;grid-template-columns:minmax(0,1fr);gap:20px}
+.layout.open{grid-template-columns:minmax(0,1fr) minmax(0,460px)}
+@media (max-width:900px){.layout.open{grid-template-columns:minmax(0,1fr)}}
+h2.view{font-family:var(--f-display);font-size:1.6rem;margin:0 0 4px;text-wrap:balance}
+.lede{color:var(--muted);margin:0 0 16px;max-width:65ch}
+.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.bar input[type=search]{flex:1 1 220px;min-width:0}
+input[type=text],input[type=search],input[type=number],select,textarea{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:6px 10px;width:100%}
+.bar select{width:auto}
+textarea{min-height:76px;resize:vertical}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:1px 10px;font-size:.82rem;color:var(--muted);background:var(--surface);white-space:nowrap}
+.chip.type{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.05em;text-transform:uppercase}
+.status{border-color:currentColor;font-weight:500}
+.s-official{color:var(--official)}.s-project{color:var(--project)}.s-proposal{color:var(--proposal)}.s-discarded{color:var(--discarded)}
+.list{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);overflow:hidden}
+.row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;padding:12px 14px;border-bottom:1px solid var(--line);cursor:pointer;text-align:left;background:none;border-left:0;border-right:0;border-top:0;width:100%}
+.row:last-child{border-bottom:0}
+.row:hover,.row[aria-selected="true"]{background:var(--sunk)}
+.row .name{font-weight:700;min-width:0}
+.row .sum{grid-column:1/-1;color:var(--muted);font-size:.93rem;min-width:0;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.row .meta{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.empty{border:1px dashed var(--line);border-radius:var(--r);padding:28px;text-align:center;color:var(--muted);background:var(--surface)}
+.empty b{display:block;color:var(--ink);font-family:var(--f-display);font-size:1.2rem;margin-bottom:4px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.card h3{margin:0;font-size:1.1rem;cursor:pointer}
+.card h3:hover{color:var(--accent)}
+.clockrow{display:flex;gap:12px;align-items:center}
+.clocktxt{font-family:var(--f-mono);font-variant-numeric:tabular-nums;font-size:1.05rem}
+.clocktxt small{display:block;color:var(--muted);font-size:.72rem;font-family:var(--f-body)}
+.portents{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;font-size:.93rem}
+.portents li{display:flex;gap:8px;align-items:flex-start}
+.portents li.done span{color:var(--muted);text-decoration:line-through}
+.portents .grim{color:var(--danger);font-weight:500}
+aside.drawer{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;align-self:start;position:sticky;top:calc(env(safe-area-inset-top,0px) + 84px);max-height:calc(100vh - 110px);overflow:auto;min-width:0}
+@media (max-width:900px){aside.drawer{position:fixed;inset:0;max-height:none;border-radius:0;z-index:20;padding:calc(16px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) calc(24px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}}
+.dhead{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.dhead h2{font-family:var(--f-display);font-size:1.5rem;margin:0;line-height:1.15;text-wrap:balance}
+.dhead .fr{color:var(--muted);font-style:italic}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+.sec{margin-top:14px}
+.sec h4{margin:0 0 2px;font-family:var(--f-mono);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:500}
+.sec p{margin:0;white-space:pre-wrap}
+.secret{background:var(--sunk);border-radius:var(--r);padding:8px 10px}
+.links{display:flex;gap:6px;flex-wrap:wrap}
+.links button.chip{cursor:pointer;color:var(--ink)}
+.links button.chip:hover{border-color:var(--accent)}
+.form{display:flex;flex-direction:column;gap:12px}
+.form label{display:flex;flex-direction:column;gap:3px;font-weight:500;font-size:.93rem}
+.form label .hint{font-weight:400;color:var(--muted);font-size:.84rem}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:420px){.two{grid-template-columns:1fr}}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;align-items:center}
+.note{font-size:.85rem;color:var(--muted)}
+.timeline{list-style:none;margin:0;padding:0;border-left:2px solid var(--line);margin-left:8px}
+.timeline li{position:relative;padding:0 0 18px 22px}
+.timeline li::before{content:"";position:absolute;left:-7px;top:6px;width:12px;height:12px;border-radius:50%;background:var(--surface);border:2px solid var(--accent)}
+.timeline .yr{font-family:var(--f-mono);font-variant-numeric:tabular-nums;color:var(--accent);font-weight:500}
+.timeline button{background:none;border:0;padding:0;font-weight:700;cursor:pointer;text-align:left}
+.timeline button:hover{color:var(--accent)}
+.stats{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px 14px;min-width:130px}
+.stat b{display:block;font-family:var(--f-mono);font-size:1.4rem;font-variant-numeric:tabular-nums}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:640px;font-size:.93rem}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500}
+h3.sub{font-family:var(--f-display);font-size:1.25rem;margin:26px 0 8px}
+.turn{display:flex;flex-direction:column;gap:10px}
+.turnrow{border:1px solid var(--line);border-radius:var(--r);padding:10px;display:flex;flex-direction:column;gap:6px}
+.seg{display:flex;gap:4px}
+.seg label{flex:1;text-align:center;border:1px solid var(--line);border-radius:var(--r);padding:3px;cursor:pointer;font-size:.88rem}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg input:checked+span{font-weight:700;color:var(--accent)}
+.seg label:has(input:checked){border-color:var(--accent);background:var(--accent-soft)}
+.toast{position:fixed;bottom:calc(16px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:var(--r);z-index:30;font-size:.93rem}
+.banner{background:var(--accent-soft);border:1px solid var(--line);border-radius:var(--r);padding:8px 12px;margin-bottom:14px;font-size:.93rem}
+.help{font-size:.9rem;color:var(--muted);max-width:65ch}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0}
+[hidden]{display:none!important}
+.login{max-width:420px;margin:12vh auto 0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:28px}
+.login h1{font-family:var(--f-display);margin:0 0 6px;font-size:1.9rem}
+.who{font-size:.85rem;color:var(--muted)}
+</style>
+</head>
+<body>
+<div id="loginScreen" class="wrap" hidden>
+  <form class="login form" id="loginForm">
+    <h1>The Gate Bible</h1>
+    <p class="help" style="margin:0">The team's worldbuilding codex for the BG3 sequel. Enter your email and we'll send you a sign-in link. Only people on the team list can sign in.</p>
+    <label>Email<input type="email" id="loginEmail" required autocomplete="email" style="background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:6px 10px;width:100%"></label>
+    <button class="btn primary" type="submit" id="loginBtn">Send me a sign-in link</button>
+    <p class="note" id="loginMsg" aria-live="polite"></p>
+  </form>
+</div>
+<div id="app" hidden>
+
+<header>
+  <div class="wrap top">
+    <h1 class="brand">The Gate Bible<small>SL ROLEPLAY · FROM 1492 DR</small></h1>
+    <nav class="tabs" aria-label="Views">
+      <a href="#codex" data-view="codex">Codex</a>
+      <a href="#plots" data-view="plots">Plots &amp; clocks</a>
+      <a href="#timeline" data-view="timeline">Timeline</a>
+      <a href="#canon" data-view="canon">Canon</a>
+      <a href="#team" data-view="team">Team</a>
+    </nav>
+    <div class="tools"><span class="who" id="who"></span><button class="btn small" id="signOut">Sign out</button></div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div id="banner"></div>
+  <div class="layout" id="layout">
+    <section id="view" aria-live="polite"></section>
+    <aside class="drawer" id="drawer" hidden></aside>
+  </div>
+</main>
+</div>
+<div id="toast" class="toast" hidden></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+const SUPABASE_URL = "https://fctudxawbuuneqifuizh.supabase.co";
+/* Public "anon" key: safe to ship in a web page. Access is enforced by the database's row-level security. */
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZjdHVkeGF3YnV1bmVxaWZ1aXpoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMyNjUzOTEsImV4cCI6MjEwODg0MTM5MX0.1IWsDO-6tB8EAdg4a4Rs3DLB3XBxCUBeqem3NRU_j1E";
+</script>
+<script>
+const TYPES = {
+  Location:{fields:["Scale","Controlled by","Mood (3 words)","Resources","Dangers","Adventure hooks"]},
+  Faction:{fields:["Goal","Means","Leader","Key members","Allies","Enemies","What it wants from Baldur's Gate"]},
+  NPC:{fields:["Role","Desire","Fear","Voice and verbal tic","Faction ties","What they think of BG3's heroes"]},
+  Deity:{fields:["Domains","Alignment","Clergy","State after BG3","What its worshippers want"]},
+  Event:{fields:["Place","Actors","Causes","Consequences","Who remembers it and how"]},
+  Item:{fields:["Power","Cost","Origin","Current holder","Who is looking for it"]},
+  People:{fields:["Territory","Values","Customs","Language","Relations with other peoples","Situation after BG3"]},
+  Idea:{fields:[]}
+};
+const MODULES = ["Cosmology and planes","Gods and religions","History and timeline","Geography and places","Peoples and cultures","Factions and power","Magic and technology","Economy and daily life","Characters","Threats and plots","Story","Canon and glossary"];
+const STATUSES = ["Official canon","Project canon","Proposal","Discarded"];
+const SCLASS = {"Official canon":"s-official","Project canon":"s-project","Proposal":"s-proposal","Discarded":"s-discarded"};
+const PLOT_KINDS = ["Front","Faction project","Subplot"];
+const PLOT_STATES = ["Active","Idea","Resolved"];
+const ORIGINS = ["New","BG1","BG2","Throne of Bhaal","BG3"];
+const DEFAULT_MODULE = {Location:4,Faction:6,NPC:9,Deity:2,Event:3,Item:7,People:5,Idea:11};
+
+const S = {entries:new Map(), plots:new Map(), register:new Map(), members:new Map(), loaded:{entries:false,plots:false,register:false},
+  view:"codex", q:"", fType:"", fStatus:"", fModule:"", pKind:"", sel:null, mode:"view", draft:null, confirmDel:false,
+  db:null, user:null, me:null, canWrite:true, names:{}, downloads:null};
+
+const $ = s => document.querySelector(s);
+const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,8);
+const byName = (a,b) => (a.name||"").localeCompare(b.name||"");
+function toast(msg){const t=$("#toast");t.textContent=msg;t.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>t.hidden=true,2400)}
+function statusChip(s){return `<span class="chip status ${SCLASS[s]||""}">${esc(s||"Proposal")}</span>`}
+function entryName(id){const e=S.entries.get(id);return e?e.name:"(deleted entry)"}
+
+function clockSVG(filled,size,px=56){
+  size=Math.max(1,size|0);filled=Math.max(0,Math.min(size,filled|0));
+  const r=px/2-3,c=px/2;let p="";
+  for(let i=0;i<size;i++){
+    const a0=(i/size)*2*Math.PI-Math.PI/2,a1=((i+1)/size)*2*Math.PI-Math.PI/2;
+    const x0=c+r*Math.cos(a0),y0=c+r*Math.sin(a0),x1=c+r*Math.cos(a1),y1=c+r*Math.sin(a1);
+    p+=`<path d="M${c},${c} L${x0.toFixed(2)},${y0.toFixed(2)} A${r},${r} 0 0 1 ${x1.toFixed(2)},${y1.toFixed(2)} Z" fill="${i<filled?"var(--accent)":"var(--sunk)"}" stroke="var(--surface)" stroke-width="2"/>`;
+  }
+  return `<svg width="${px}" height="${px}" viewBox="0 0 ${px} ${px}" role="img" aria-label="${filled} of ${size} slices filled">${p}<circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="var(--line)" stroke-width="1"/></svg>`;
+}
+
+/* ---------- routing ---------- */
+function route(){const h=location.hash.replace("#","");S.view=["codex","plots","timeline","canon","team"].includes(h)?h:"codex";
+  document.querySelectorAll("nav.tabs a").forEach(a=>{if(a.dataset.view===S.view)a.setAttribute("aria-current","page");else a.removeAttribute("aria-current")});
+  renderView();}
+window.addEventListener("hashchange",route);
+
+/* ---------- views ---------- */
+function renderView(){
+  const v=$("#view");
+  if(S.view==="codex")v.innerHTML=viewCodex();
+  else if(S.view==="plots")v.innerHTML=viewPlots();
+  else if(S.view==="timeline")v.innerHTML=viewTimeline();
+  else if(S.view==="team")v.innerHTML=viewTeam();
+  else v.innerHTML=viewCanon();
+  bindView();
+}
+function filteredEntries(){
+  const q=S.q.trim().toLowerCase();
+  return [...S.entries.values()].filter(e=>(!S.fType||e.type===S.fType)&&(!S.fStatus||e.status===S.fStatus)&&(!S.fModule||String(e.module)===S.fModule)
+    &&(!q||[e.name,e.nameFr,e.summary,(e.tags||[]).join(" ")].join(" ").toLowerCase().includes(q))).sort(byName);
+}
+function viewCodex(){
+  const list=filteredEntries();
+  const opts=(arr,cur,all)=>`<option value="">${all}</option>`+arr.map((x,i)=>{const val=typeof x==="object"?x.v:x,lab=typeof x==="object"?x.l:x;return `<option value="${esc(val)}" ${String(cur)===String(val)?"selected":""}>${esc(lab)}</option>`}).join("");
+  let body;
+  if(!S.loaded.entries) body=`<div class="empty"><b>Opening the codex…</b>Loading the team's entries.</div>`;
+  else if(!S.entries.size) body=`<div class="empty"><b>The codex is empty</b>Every place, faction, character and idea gets one entry here. Start with “New entry”.</div>`;
+  else if(!list.length) body=`<div class="empty"><b>No entry matches</b>Clear the search or the filters to see everything.</div>`;
+  else body=`<div class="list" role="listbox" aria-label="Entries">`+list.map(e=>`<button class="row" role="option" data-open-entry="${e.id}" aria-selected="${S.sel&&S.sel.id===e.id}">
+      <span class="name">${esc(e.name||"Untitled")}${e.nameFr?` <span class="note">· ${esc(e.nameFr)}</span>`:""}</span>
+      <span class="meta"><span class="chip type">${esc(e.type)}</span>${statusChip(e.status)}</span>
+      ${e.summary?`<span class="sum">${esc(e.summary)}</span>`:""}</button>`).join("")+`</div>`;
+  return `<h2 class="view">Codex</h2><p class="lede">Every place, faction, character, god, event, item, people and loose idea, one entry each. Link entries together so you can follow how they connect.</p>
+  <div class="bar"><input type="search" id="q" placeholder="Search names and summaries" value="${esc(S.q)}" aria-label="Search entries">
+    <select id="fType" aria-label="Filter by type">${opts(Object.keys(TYPES),S.fType,"All types")}</select>
+    <select id="fModule" aria-label="Filter by module">${opts(MODULES.map((m,i)=>({v:i+1,l:`${i+1}. ${m}`})),S.fModule,"All modules")}</select>
+    <select id="fStatus" aria-label="Filter by canon status">${opts(STATUSES,S.fStatus,"All statuses")}</select>
+    ${S.canWrite?`<button class="btn primary" id="newEntry">New entry</button>`:""}</div>
+  <p class="note">${list.length} of ${S.entries.size} entries</p>${body}`;
+}
+function viewPlots(){
+  const plots=[...S.plots.values()].filter(p=>!S.pKind||p.kind===S.pKind).sort((a,b)=>(PLOT_STATES.indexOf(a.state)-PLOT_STATES.indexOf(b.state))||byName(a,b));
+  let body;
+  if(!S.loaded.plots) body=`<div class="empty"><b>Loading plots…</b></div>`;
+  else if(!S.plots.size) body=`<div class="empty"><b>No plots yet</b>Add a front (a growing threat), a faction project or a subplot, then give it a clock.</div>`;
+  else body=`<div class="grid">`+plots.map(plotCard).join("")+`</div>`;
+  return `<h2 class="view">Plots &amp; clocks</h2><p class="lede">Each plot has a clock: a progress bar split into 4, 6 or 8 slices. When it fills, the plot succeeds and the world changes. Use “Faction turn” between chapters to move every clock at once.</p>
+  <div class="bar"><select id="pKind" aria-label="Filter by kind"><option value="">All kinds</option>${PLOT_KINDS.map(k=>`<option ${S.pKind===k?"selected":""}>${k}</option>`).join("")}</select>
+  ${S.canWrite?`<button class="btn" id="factionTurn">Faction turn</button><button class="btn primary" id="newPlot">New plot</button>`:""}</div>${body}`;
+}
+function plotCard(p){
+  const port=(p.portents||[]);
+  return `<article class="card">
+    <div class="chips" style="margin:0"><span class="chip type">${esc(p.kind)}</span><span class="chip">${esc(p.state||"Active")}</span>${p.origin&&p.origin!=="New"?`<span class="chip">${esc(p.origin)}</span>`:""}</div>
+    <h3 data-open-plot="${p.id}" tabindex="0">${esc(p.name||"Untitled plot")}</h3>
+    <div class="clockrow">${clockSVG(p.clockFilled,p.clockSize)}
+      <div class="clocktxt">${p.clockFilled|0} / ${p.clockSize|0}<small>${(p.clockFilled|0)>=(p.clockSize|0)?"Clock full: it happened":"slices filled"}</small></div>
+      ${S.canWrite?`<div style="margin-left:auto;display:flex;gap:4px"><button class="btn small" data-tick="${p.id}" data-d="-1" aria-label="Erase one slice">−</button><button class="btn small" data-tick="${p.id}" data-d="1" aria-label="Fill one slice">+</button></div>`:""}</div>
+    ${p.goal?`<p class="note" style="margin:0"><b>Goal:</b> ${esc(p.goal)}</p>`:""}
+    ${port.length||p.grim?`<ul class="portents">${port.map((x,i)=>`<li class="${x.done?"done":""}"><input type="checkbox" ${x.done?"checked":""} ${S.canWrite?"":"disabled"} data-portent="${p.id}" data-i="${i}" aria-label="Portent ${i+1} has happened"><span>${esc(x.text)}</span></li>`).join("")}${p.grim?`<li><span class="grim">If nobody stops it: ${esc(p.grim)}</span></li>`:""}</ul>`:""}
+    ${(p.entries||[]).length?`<div class="links">${p.entries.map(id=>`<button class="chip" data-open-entry="${id}">${esc(entryName(id))}</button>`).join("")}</div>`:""}
+  </article>`;
+}
+function viewTimeline(){
+  const ev=[...S.entries.values()].filter(e=>e.type==="Event").sort((a,b)=>(a.year??1e9)-(b.year??1e9)||byName(a,b));
+  const body=!ev.length?`<div class="empty"><b>No events yet</b>Create an entry of type “Event” with a year in DR and it appears here, in order.</div>`
+    :`<ol class="timeline">`+ev.map(e=>`<li><span class="yr">${e.year!=null&&e.year!==""?esc(e.year)+" DR":"Year unknown"}</span> ${statusChip(e.status)}<br><button data-open-entry="${e.id}">${esc(e.name)}</button>${e.summary?`<div class="note">${esc(e.summary)}</div>`:""}</li>`).join("")+`</ol>`;
+  return `<h2 class="view">Timeline</h2><p class="lede">Every Event entry, in year order. BG3 ends in 1492 DR; your story starts wherever the team decides.</p>
+  ${S.canWrite?`<div class="bar"><button class="btn primary" id="newEvent">New event</button></div>`:""}${body}`;
+}
+function viewCanon(){
+  const all=[...S.entries.values()];
+  const count=s=>all.filter(e=>e.status===s).length;
+  const props=all.filter(e=>e.status==="Proposal").sort(byName);
+  const reg=[...S.register.values()].sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+  return `<h2 class="view">Canon</h2><p class="lede">An idea starts as a Proposal. Once two teammates agree, it becomes Project canon. Rejected ideas are Discarded, never deleted, so nobody proposes them again by accident.</p>
+  <div class="stats">${STATUSES.map(s=>`<div class="stat"><b class="${SCLASS[s]}">${count(s)}</b>${s}</div>`).join("")}</div>
+  <h3 class="sub">Waiting for review</h3>
+  ${!props.length?`<div class="empty">No proposals waiting.</div>`:`<div class="list">${props.map(e=>`<div class="row" style="cursor:default"><button class="btn ghost" style="padding:0;text-align:left;font-weight:700" data-open-entry="${e.id}">${esc(e.name)}</button>
+    <span class="meta">${S.canWrite?`<button class="btn small" data-setstatus="${e.id}" data-s="Project canon">Approve</button><button class="btn small" data-setstatus="${e.id}" data-s="Discarded">Discard</button>`:""}</span>
+    ${e.summary?`<span class="sum">${esc(e.summary)}</span>`:""}</div>`).join("")}</div>`}
+  <h3 class="sub">Contradictions register</h3>
+  <p class="help">Every time the team deliberately changes or fills in official Forgotten Realms canon, write it here: what changed, what canon says, and why.</p>
+  ${reg.length?`<div class="tablewrap"><table><thead><tr><th>Date</th><th>What we changed</th><th>Official canon says</th><th>Why</th><th>Decided by</th>${S.canWrite?"<th></th>":""}</tr></thead><tbody>
+    ${reg.map(r=>`<tr><td style="font-family:var(--f-mono);white-space:nowrap">${esc(r.date)}</td><td>${esc(r.change)}</td><td>${esc(r.canonSays)}</td><td>${esc(r.why)}</td><td>${esc(r.decidedBy)}</td>${S.canWrite?`<td><button class="btn small danger" data-delreg="${r.id}">${S.confirmReg===r.id?"Confirm":"Remove"}</button></td>`:""}</tr>`).join("")}
+  </tbody></table></div>`:`<div class="empty">No contradictions recorded yet.</div>`}
+  ${S.canWrite?`<form id="regForm" class="form" style="margin-top:14px;max-width:720px">
+    <div class="two"><label>What we changed<input type="text" id="r_change" required></label><label>Official canon says<input type="text" id="r_canon"></label></div>
+    <div class="two"><label>Why<input type="text" id="r_why"></label><label>Decided by<input type="text" id="r_by" placeholder="Whole team"></label></div>
+    <div><button class="btn primary" type="submit">Add to register</button></div></form>`:""}
+  <h3 class="sub">Back up the bible</h3>
+  <p class="help">Download everything (entries, plots and register) as one JSON file, to keep a copy or move it elsewhere.</p>
+  <button class="btn" id="exportBtn">Download backup</button>`;
+}
+
+function viewTeam(){
+  const ms=[...S.members.values()].sort((a,b)=>a.email.localeCompare(b.email));
+  return `<h2 class="view">Team</h2><p class="lede">Only the people listed here can sign in, read and edit the bible. To invite a colleague, add their email, then send them the app's web address. They sign in with a link sent to that email.</p>
+  <div class="list" style="max-width:640px">${ms.map(m=>`<div class="row" style="cursor:default"><span class="name">${esc(m.email)}${m.email===S.me?` <span class="note">(you)</span>`:""}</span>
+    <span class="meta">${m.email!==S.me?`<button class="btn small danger" data-delmember="${esc(m.email)}">${S.confirmMember===m.email?"Confirm":"Remove"}</button>`:""}</span>
+    <span class="sum">Added ${m.added_at?new Date(m.added_at).toLocaleDateString():""}${m.added_by&&m.added_by!=="setup"?` by ${esc(m.added_by)}`:""}</span></div>`).join("")}</div>
+  <form id="memberForm" class="form" style="margin-top:14px;max-width:640px"><div style="display:flex;gap:8px;flex-wrap:wrap"><input type="email" id="m_email" placeholder="colleague@example.com" required aria-label="Colleague's email" style="flex:1 1 220px;min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:6px 10px"><button class="btn primary" type="submit">Add to team</button></div></form>`;
+}
+function bindView(){
+  const v=$("#view");
+  const on=(sel,ev,fn)=>{const el=v.querySelector(sel);if(el)el.addEventListener(ev,fn)};
+  on("#q","input",e=>{S.q=e.target.value;const pos=e.target.selectionStart;renderView();const q=$("#q");q.focus();q.setSelectionRange(pos,pos)});
+  on("#fType","change",e=>{S.fType=e.target.value;renderView()});
+  on("#fModule","change",e=>{S.fModule=e.target.value;renderView()});
+  on("#fStatus","change",e=>{S.fStatus=e.target.value;renderView()});
+  on("#pKind","change",e=>{S.pKind=e.target.value;renderView()});
+  on("#newEntry","click",()=>newEntry());
+  on("#newEvent","click",()=>newEntry("Event"));
+  on("#newPlot","click",()=>newPlot());
+  on("#factionTurn","click",()=>openDrawer({kind:"turn"},"edit"));
+  on("#exportBtn","click",exportAll);
+  on("#regForm","submit",addReg);
+  on("#memberForm","submit",addMember);
+  v.querySelectorAll("[data-delmember]").forEach(b=>b.onclick=()=>delMember(b.dataset.delmember));
+}
+document.addEventListener("click",async e=>{
+  const t=e.target.closest("[data-open-entry],[data-open-plot],[data-tick],[data-setstatus],[data-delreg],[data-portent]");
+  if(!t)return;
+  if(t.dataset.openEntry){if(S.entries.has(t.dataset.openEntry))openDrawer({kind:"entry",id:t.dataset.openEntry});}
+  else if(t.dataset.openPlot)openDrawer({kind:"plot",id:t.dataset.openPlot});
+  else if(t.dataset.tick)tick(t.dataset.tick,+t.dataset.d,"");
+  else if(t.dataset.setstatus)setStatus(t.dataset.setstatus,t.dataset.s);
+  else if(t.dataset.delreg)delReg(t.dataset.delreg);
+  else if(t.dataset.portent)togglePortent(t.dataset.portent,+t.dataset.i,t.checked);
+});
+document.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.dataset&&e.target.dataset.openPlot)openDrawer({kind:"plot",id:e.target.dataset.openPlot});
+  if(e.key==="Escape"&&S.sel&&S.mode==="view")closeDrawer();});
+
+/* ---------- drawer ---------- */
+function openDrawer(sel,mode="view"){S.sel=sel;S.mode=mode;S.confirmDel=false;
+  if(mode==="edit"&&sel.kind==="entry")S.draft=structuredClone(S.entries.get(sel.id)||sel.draft);
+  if(mode==="edit"&&sel.kind==="plot")S.draft=structuredClone(S.plots.get(sel.id)||sel.draft);
+  renderDrawer();renderView();}
+function closeDrawer(){S.sel=null;S.draft=null;renderDrawer();renderView()}
+function renderDrawer(){
+  const d=$("#drawer"),lay=$("#layout");
+  if(!S.sel){d.hidden=true;lay.classList.remove("open");return}
+  d.hidden=false;lay.classList.add("open");
+  const k=S.sel.kind;
+  if(k==="entry")d.innerHTML=S.mode==="edit"?entryForm():entryView();
+  else if(k==="plot")d.innerHTML=S.mode==="edit"?plotForm():plotView();
+  else d.innerHTML=turnForm();
+  bindDrawer();
+}
+function closeBtn(){return `<button class="btn ghost" data-close aria-label="Close">Close</button>`}
+function entryView(){
+  const e=S.entries.get(S.sel.id);if(!e)return `<div class="dhead"><h2>Entry removed</h2>${closeBtn()}</div><p class="note">Someone deleted this entry.</p>`;
+  const back=[...S.entries.values()].filter(x=>x.id!==e.id&&(x.links||[]).includes(e.id));
+  const inPlots=[...S.plots.values()].filter(p=>(p.entries||[]).includes(e.id));
+  const sec=(h,v,cls="")=>v?`<div class="sec"><h4>${h}</h4><p class="${cls}">${esc(v)}</p></div>`:"";
+  const fields=(TYPES[e.type]?.fields||[]).map(f=>sec(f,e.fields?.[f])).join("");
+  const by=e.updatedBy&&e.updatedBy!=="setup"?e.updatedBy:"";
+  return `<div class="dhead"><div><h2>${esc(e.name||"Untitled")}</h2>${e.nameFr?`<div class="fr">${esc(e.nameFr)}</div>`:""}</div>${closeBtn()}</div>
+  <div class="chips"><span class="chip type">${esc(e.type)}</span>${e.module?`<span class="chip">${e.module}. ${esc(MODULES[e.module-1])}</span>`:""}${statusChip(e.status)}${e.type==="Event"&&e.year!=null&&e.year!==""?`<span class="chip">${esc(e.year)} DR</span>`:""}</div>
+  ${sec("Summary",e.summary)}${sec("What BG3 changed",e.changed)}${sec("Public part",e.public)}${sec("Secret part",e.secret,"secret")}${fields}${sec("Canon source",e.source)}
+  ${(e.tags||[]).length?`<div class="sec"><h4>Tags</h4><div class="links">${e.tags.map(t=>`<span class="chip">${esc(t)}</span>`).join("")}</div></div>`:""}
+  <div class="sec"><h4>Linked entries</h4>${(e.links||[]).length?`<div class="links">${e.links.map(id=>`<button class="chip" data-open-entry="${id}">${esc(entryName(id))}</button>`).join("")}</div>`:`<p class="note">None yet.</p>`}</div>
+  ${back.length?`<div class="sec"><h4>Mentioned by</h4><div class="links">${back.sort(byName).map(x=>`<button class="chip" data-open-entry="${x.id}">${esc(x.name)}</button>`).join("")}</div></div>`:""}
+  ${inPlots.length?`<div class="sec"><h4>Involved in plots</h4><div class="links">${inPlots.map(p=>`<button class="chip" data-open-plot="${p.id}">${esc(p.name)} · ${p.clockFilled|0}/${p.clockSize|0}</button>`).join("")}</div></div>`:""}
+  ${S.canWrite?`<div class="actions"><button class="btn primary" data-edit>Edit</button><button class="btn danger" data-del>${S.confirmDel?"Click again to delete":"Delete"}</button></div>`:""}
+  ${e.updatedAt?`<p class="note">Last edited ${new Date(e.updatedAt).toLocaleString()}${by?` by ${esc(by)}`:""}</p>`:""}`;
+}
+function entryForm(){
+  const e=S.draft;const type=e.type||"Idea";
+  const sel=(id,arr,cur)=>`<select id="${id}">${arr.map(x=>{const v=typeof x==="object"?x.v:x,l=typeof x==="object"?x.l:x;return `<option value="${esc(v)}" ${String(cur)===String(v)?"selected":""}>${esc(l)}</option>`}).join("")}</select>`;
+  const others=[...S.entries.values()].filter(x=>x.id!==e.id&&!(e.links||[]).includes(x.id)).sort(byName);
+  return `<div class="dhead"><h2>${S.entries.has(e.id)?"Edit entry":"New entry"}</h2>${closeBtn()}</div>
+  <form class="form" id="entryForm" style="margin-top:12px">
+    <div class="two"><label>Type${sel("f_type",Object.keys(TYPES),type)}</label><label>Canon status${sel("f_status",STATUSES,e.status||"Proposal")}</label></div>
+    <label>Name<input type="text" id="f_name" value="${esc(e.name)}" required></label>
+    <label>French name <span class="hint">Optional, for the glossary</span><input type="text" id="f_nameFr" value="${esc(e.nameFr)}"></label>
+    <div class="two"><label>Module${sel("f_module",MODULES.map((m,i)=>({v:i+1,l:`${i+1}. ${m}`})),e.module||DEFAULT_MODULE[type])}</label>
+      ${type==="Event"?`<label>Year (DR)<input type="number" id="f_year" value="${esc(e.year)}" placeholder="1492"></label>`:`<label>Tags <span class="hint">Comma separated</span><input type="text" id="f_tags" value="${esc((e.tags||[]).join(", "))}"></label>`}</div>
+    <label>Summary <span class="hint">One or two sentences</span><textarea id="f_summary">${esc(e.summary)}</textarea></label>
+    <label>What BG3 changed <span class="hint">How did the events of BG3 affect this?</span><textarea id="f_changed">${esc(e.changed)}</textarea></label>
+    <label>Public part <span class="hint">What most people know</span><textarea id="f_public">${esc(e.public)}</textarea></label>
+    <label>Secret part <span class="hint">What only the team knows</span><textarea id="f_secret">${esc(e.secret)}</textarea></label>
+    ${(TYPES[type].fields).map((f,i)=>`<label>${esc(f)}<textarea id="ff_${i}" style="min-height:48px">${esc(e.fields?.[f])}</textarea></label>`).join("")}
+    <label>Canon source <span class="hint">Game or book this comes from, if any</span><input type="text" id="f_source" value="${esc(e.source)}"></label>
+    <div><div style="font-weight:500;font-size:.93rem">Linked entries</div>
+      <div class="links" style="margin:6px 0">${(e.links||[]).map(id=>`<span class="chip">${esc(entryName(id))}<button type="button" class="btn ghost small" data-unlink="${id}" aria-label="Remove link">×</button></span>`).join("")||`<span class="note">No links yet.</span>`}</div>
+      ${others.length?`<div style="display:flex;gap:6px"><select id="f_linkpick" aria-label="Entry to link"><option value="">Choose an entry to link…</option>${others.map(x=>`<option value="${x.id}">${esc(x.name)} (${esc(x.type)})</option>`).join("")}</select><button type="button" class="btn" id="f_linkadd">Link</button></div>`:""}</div>
+    <div class="actions"><button class="btn primary" type="submit">Save</button><button class="btn" type="button" data-cancel>Cancel</button></div>
+  </form>`;
+}
+function readEntryForm(){
+  const d=S.draft,g=id=>{const el=document.getElementById(id);return el?el.value:undefined};
+  const type=g("f_type");const prevType=d.type;
+  d.name=g("f_name").trim();d.nameFr=g("f_nameFr").trim();d.status=g("f_status");d.module=+g("f_module");
+  d.summary=g("f_summary");d.changed=g("f_changed");d.public=g("f_public");d.secret=g("f_secret");d.source=g("f_source");
+  if(g("f_year")!==undefined)d.year=g("f_year")===""?null:+g("f_year");
+  if(g("f_tags")!==undefined)d.tags=g("f_tags").split(",").map(s=>s.trim()).filter(Boolean);
+  d.fields=d.fields||{};(TYPES[prevType]?.fields||[]).forEach((f,i)=>{const v=g("ff_"+i);if(v!==undefined)d.fields[f]=v});
+  d.type=type;return {typeChanged:type!==prevType};
+}
+function plotView(){
+  const p=S.plots.get(S.sel.id);if(!p)return `<div class="dhead"><h2>Plot removed</h2>${closeBtn()}</div>`;
+  const sec=(h,v)=>v?`<div class="sec"><h4>${h}</h4><p>${esc(v)}</p></div>`:"";
+  const hist=(p.history||[]).slice(-12).reverse();
+  return `<div class="dhead"><h2>${esc(p.name)}</h2>${closeBtn()}</div>
+  <div class="chips"><span class="chip type">${esc(p.kind)}</span><span class="chip">${esc(p.state||"Active")}</span><span class="chip">${esc(p.origin||"New")}</span></div>
+  <div class="clockrow">${clockSVG(p.clockFilled,p.clockSize,72)}<div class="clocktxt">${p.clockFilled|0} / ${p.clockSize|0}<small>slices filled</small></div></div>
+  ${sec("Summary",p.summary)}${sec("Goal",p.goal)}
+  ${(p.portents||[]).length?`<div class="sec"><h4>Portents (warning signs, in order)</h4><ul class="portents">${p.portents.map((x,i)=>`<li class="${x.done?"done":""}"><input type="checkbox" ${x.done?"checked":""} ${S.canWrite?"":"disabled"} data-portent="${p.id}" data-i="${i}" aria-label="Portent ${i+1} has happened"><span>${esc(x.text)}</span></li>`).join("")}</ul></div>`:""}
+  ${sec("If nobody stops it",p.grim)}
+  <div class="sec"><h4>Entries involved</h4>${(p.entries||[]).length?`<div class="links">${p.entries.map(id=>`<button class="chip" data-open-entry="${id}">${esc(entryName(id))}</button>`).join("")}</div>`:`<p class="note">None linked yet.</p>`}</div>
+  ${hist.length?`<div class="sec"><h4>Clock history</h4><ul class="portents">${hist.map(h=>`<li><span class="clocktxt" style="font-size:.85rem">${h.from}→${h.to}</span><span>${esc(h.note||"")} <span class="note">${new Date(h.at).toLocaleDateString()}</span></span></li>`).join("")}</ul></div>`:""}
+  ${S.canWrite?`<div class="actions"><button class="btn primary" data-edit>Edit</button><button class="btn danger" data-del>${S.confirmDel?"Click again to delete":"Delete"}</button></div>`:""}`;
+}
+function plotForm(){
+  const p=S.draft;
+  const others=[...S.entries.values()].filter(x=>!(p.entries||[]).includes(x.id)).sort(byName);
+  const sel=(id,arr,cur)=>`<select id="${id}">${arr.map(x=>`<option ${String(cur)===String(x)?"selected":""}>${esc(x)}</option>`).join("")}</select>`;
+  return `<div class="dhead"><h2>${S.plots.has(p.id)?"Edit plot":"New plot"}</h2>${closeBtn()}</div>
+  <form class="form" id="plotForm" style="margin-top:12px">
+    <label>Name<input type="text" id="p_name" value="${esc(p.name)}" required></label>
+    <div class="two"><label>Kind <span class="hint">Front = growing threat</span>${sel("p_kind",PLOT_KINDS,p.kind)}</label><label>State${sel("p_state",PLOT_STATES,p.state||"Active")}</label></div>
+    <div class="two"><label>Comes from${sel("p_origin",ORIGINS,p.origin||"New")}</label>
+      <label>Clock size <span class="hint">4 small · 6 normal · 8 huge</span>${sel("p_size",[4,6,8],p.clockSize||6)}</label></div>
+    <label>Slices filled<input type="number" id="p_filled" min="0" max="8" value="${p.clockFilled|0}"></label>
+    <label>Summary<textarea id="p_summary">${esc(p.summary)}</textarea></label>
+    <label>Goal <span class="hint">What does the faction or threat want?</span><input type="text" id="p_goal" value="${esc(p.goal)}"></label>
+    <label>Portents <span class="hint">One warning sign per line, from first to last</span><textarea id="p_portents">${esc((p.portents||[]).map(x=>x.text).join("\n"))}</textarea></label>
+    <label>If nobody stops it <span class="hint">The worst outcome</span><textarea id="p_grim" style="min-height:48px">${esc(p.grim)}</textarea></label>
+    <div><div style="font-weight:500;font-size:.93rem">Entries involved</div>
+      <div class="links" style="margin:6px 0">${(p.entries||[]).map(id=>`<span class="chip">${esc(entryName(id))}<button type="button" class="btn ghost small" data-unlink="${id}" aria-label="Remove link">×</button></span>`).join("")||`<span class="note">None yet.</span>`}</div>
+      ${others.length?`<div style="display:flex;gap:6px"><select id="f_linkpick" aria-label="Entry to link"><option value="">Choose an entry…</option>${others.map(x=>`<option value="${x.id}">${esc(x.name)} (${esc(x.type)})</option>`).join("")}</select><button type="button" class="btn" id="f_linkadd">Link</button></div>`:""}</div>
+    <div class="actions"><button class="btn primary" type="submit">Save</button><button class="btn" type="button" data-cancel>Cancel</button></div>
+  </form>`;
+}
+function readPlotForm(){
+  const p=S.draft,g=id=>document.getElementById(id).value;
+  p.name=g("p_name").trim();p.kind=g("p_kind");p.state=g("p_state");p.origin=g("p_origin");p.clockSize=+g("p_size");
+  p.clockFilled=Math.max(0,Math.min(p.clockSize,+g("p_filled")||0));p.summary=g("p_summary");p.goal=g("p_goal");p.grim=g("p_grim");
+  const old=p.portents||[];p.portents=g("p_portents").split("\n").map(s=>s.trim()).filter(Boolean).map(t=>({text:t,done:!!(old.find(o=>o.text===t)||{}).done}));
+}
+function turnForm(){
+  const ps=[...S.plots.values()].filter(p=>(p.state||"Active")==="Active").sort(byName);
+  return `<div class="dhead"><h2>Faction turn</h2>${closeBtn()}</div>
+  <p class="help">Between two chapters, decide what each active plot achieved off screen. Pick +1 if it made progress, 0 if it waited or hid, −1 if it was set back. Add a one-line note for the history.</p>
+  ${!ps.length?`<div class="empty">No active plots.</div>`:`<form class="turn" id="turnForm">${ps.map(p=>`<div class="turnrow"><div style="display:flex;gap:10px;align-items:center">${clockSVG(p.clockFilled,p.clockSize,36)}<b style="min-width:0">${esc(p.name)}</b><span class="clocktxt" style="margin-left:auto;font-size:.9rem">${p.clockFilled|0}/${p.clockSize|0}</span></div>
+    <div class="seg" role="radiogroup" aria-label="Change for ${esc(p.name)}">${[-1,0,1,2].map(d=>`<label><input type="radio" name="t_${p.id}" value="${d}" ${d===0?"checked":""}><span>${d>0?"+"+d:d===0?"0":"−1"}</span></label>`).join("")}</div>
+    <input type="text" id="tn_${p.id}" placeholder="What happened? (optional)" aria-label="Note for ${esc(p.name)}"></div>`).join("")}
+    <div class="actions"><button class="btn primary" type="submit">Apply the turn</button><button class="btn" type="button" data-close>Cancel</button></div></form>`}`;
+}
+function bindDrawer(){
+  const d=$("#drawer");
+  d.querySelectorAll("[data-close]").forEach(b=>b.onclick=closeDrawer);
+  const ed=d.querySelector("[data-edit]");if(ed)ed.onclick=()=>openDrawer(S.sel,"edit");
+  const del=d.querySelector("[data-del]");if(del)del.onclick=()=>{if(!S.confirmDel){S.confirmDel=true;renderDrawer();return}removeSelected()};
+  const cancel=d.querySelector("[data-cancel]");if(cancel)cancel.onclick=()=>{const exists=S.sel.kind==="entry"?S.entries.has(S.draft.id):S.plots.has(S.draft.id);if(exists)openDrawer(S.sel,"view");else closeDrawer()};
+  const ef=d.querySelector("#entryForm");
+  if(ef){
+    ef.querySelector("#f_type").onchange=()=>{readEntryForm();if(!S.entries.has(S.draft.id))S.draft.module=DEFAULT_MODULE[S.draft.type];renderDrawer()};
+    ef.onsubmit=ev=>{ev.preventDefault();readEntryForm();saveEntry()};
+  }
+  const pf=d.querySelector("#plotForm");if(pf)pf.onsubmit=ev=>{ev.preventDefault();readPlotForm();savePlot()};
+  const add=d.querySelector("#f_linkadd");
+  if(add)add.onclick=()=>{const v=d.querySelector("#f_linkpick").value;if(!v)return;S.sel.kind==="entry"?readEntryForm():readPlotForm();const key=S.sel.kind==="entry"?"links":"entries";S.draft[key]=[...(S.draft[key]||[]),v];renderDrawer()};
+  d.querySelectorAll("[data-unlink]").forEach(b=>b.onclick=()=>{S.sel.kind==="entry"?readEntryForm():readPlotForm();const key=S.sel.kind==="entry"?"links":"entries";S.draft[key]=(S.draft[key]||[]).filter(x=>x!==b.dataset.unlink);renderDrawer()});
+  const tf=d.querySelector("#turnForm");if(tf)tf.onsubmit=ev=>{ev.preventDefault();applyTurn(tf)};
+}
+
+/* ---------- writes ---------- */
+function stamp(o){o.updatedAt=Date.now();if(S.me)o.updatedBy=S.me;return o}
+function clean(o){return JSON.parse(JSON.stringify(o))}
+async function write(path,data,ok){
+  const [table,id]=path.split("/");
+  const body=clean(data);delete body.id;delete body.updatedAt;delete body.updatedBy;
+  const {error}=await S.sb.from(table).upsert({id,data:body,updated_at:new Date().toISOString(),updated_by:S.me});
+  if(error){toast("Couldn't save: "+error.message);return false}
+  if(ok)toast(ok);return true;
+}
+async function del(table,id){const {error}=await S.sb.from(table).delete().eq("id",id);if(error)throw error}
+function newEntry(type="Idea"){openDrawer({kind:"entry",id:null,draft:{id:uid(),type,status:"Proposal",module:DEFAULT_MODULE[type],links:[],fields:{},tags:[]}},"edit")}
+function newPlot(){openDrawer({kind:"plot",id:null,draft:{id:uid(),kind:"Front",state:"Active",origin:"New",clockSize:6,clockFilled:0,portents:[],entries:[],history:[]}},"edit")}
+async function saveEntry(){
+  const d=S.draft;if(!d.name){toast("Give the entry a name first.");return}
+  const ok=await write("entries/"+d.id,stamp(d),"Saved");
+  if(ok){S.entries.set(d.id,clean(d));S.sel={kind:"entry",id:d.id};S.mode="view";S.draft=null;renderDrawer();renderView()}
+}
+async function savePlot(){
+  const p=S.draft;if(!p.name){toast("Give the plot a name first.");return}
+  const prev=S.plots.get(p.id);
+  if(prev&&(prev.clockFilled|0)!==(p.clockFilled|0))p.history=[...(p.history||[]),{at:Date.now(),from:prev.clockFilled|0,to:p.clockFilled|0,note:"Edited"}].slice(-50);
+  const ok=await write("plots/"+p.id,stamp(p),"Saved");
+  if(ok){S.plots.set(p.id,clean(p));S.sel={kind:"plot",id:p.id};S.mode="view";S.draft=null;renderDrawer();renderView()}
+}
+async function removeSelected(){
+  const {kind,id}=S.sel;const path=(kind==="entry"?"entries/":"plots/")+id;
+  try{await del(path.split("/")[0],id);(kind==="entry"?S.entries:S.plots).delete(id);toast("Deleted");closeDrawer()}catch(err){toast("Couldn't delete: "+(err.message||"error"))}
+}
+const busy=new Set();
+async function tick(id,delta,note){
+  const p=S.plots.get(id);if(!p||busy.has(id))return;
+  const to=Math.max(0,Math.min(p.clockSize|0,(p.clockFilled|0)+delta));if(to===(p.clockFilled|0))return;
+  const next=clean(p);next.history=[...(p.history||[]),{at:Date.now(),from:p.clockFilled|0,to,note:note||(delta>0?"Progress":"Setback")}].slice(-50);next.clockFilled=to;
+  busy.add(id);const ok=await write("plots/"+id,stamp(next));busy.delete(id);
+  if(ok){S.plots.set(id,next);if(to>=(p.clockSize|0))toast(`${p.name}: the clock is full. It happens.`);renderView();if(S.sel&&S.sel.id===id&&S.mode==="view")renderDrawer()}
+}
+async function togglePortent(id,i,done){
+  const p=S.plots.get(id);if(!p)return;const next=clean(p);if(!next.portents[i])return;next.portents[i].done=done;
+  if(await write("plots/"+id,stamp(next))){S.plots.set(id,next);renderView();if(S.sel&&S.sel.id===id&&S.mode==="view")renderDrawer()}
+}
+async function applyTurn(form){
+  const ps=[...S.plots.values()].filter(p=>(p.state||"Active")==="Active");let moved=0;
+  for(const p of ps){const d=+(form.querySelector(`input[name="t_${p.id}"]:checked`)||{value:0}).value;const note=(document.getElementById("tn_"+p.id)||{}).value||"";
+    if(d!==0){await tick(p.id,d,note?("Faction turn: "+note):"Faction turn");moved++}}
+  toast(moved?`Faction turn applied to ${moved} plot${moved>1?"s":""}`:"Nothing changed this turn");closeDrawer();
+}
+async function setStatus(id,s){const e=S.entries.get(id);if(!e)return;const n=clean(e);n.status=s;if(await write("entries/"+id,stamp(n),s==="Project canon"?"Approved as project canon":"Discarded")){S.entries.set(id,n);renderView();if(S.sel&&S.sel.id===id)renderDrawer()}}
+async function addReg(ev){ev.preventDefault();const g=id=>document.getElementById(id).value.trim();if(!g("r_change"))return;
+  const r={id:uid(),date:new Date().toISOString().slice(0,10),change:g("r_change"),canonSays:g("r_canon"),why:g("r_why"),decidedBy:g("r_by")||"Whole team"};
+  if(await write("register/"+r.id,stamp(r),"Added to the register")){S.register.set(r.id,r);renderView()}}
+async function delReg(id){if(S.confirmReg!==id){S.confirmReg=id;renderView();return}S.confirmReg=null;
+  try{await del("register",id);S.register.delete(id);toast("Removed");renderView()}catch(err){toast("Couldn't remove: "+(err.message||"error"))}}
+async function exportAll(){
+  const data=JSON.stringify({exportedAt:new Date().toISOString(),entries:[...S.entries.values()],plots:[...S.plots.values()],register:[...S.register.values()]},null,2);
+  const url=URL.createObjectURL(new Blob([data],{type:"application/json"}));
+  const a=document.createElement("a");a.href=url;a.download="the-gate-bible-backup-"+new Date().toISOString().slice(0,10)+".json";
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2000);toast("Backup downloaded");
+}
+async function addMember(ev){
+  ev.preventDefault();const email=document.getElementById("m_email").value.trim().toLowerCase();if(!email)return;
+  const {error}=await S.sb.from("members").insert({email,added_by:S.me});
+  if(error){toast(error.code==="23505"?"That email is already on the team.":"Couldn't add: "+error.message);return}
+  S.members.set(email,{email,added_at:new Date().toISOString(),added_by:S.me});toast("Added. Send them the app's address.");renderView();
+}
+async function delMember(email){
+  if(S.confirmMember!==email){S.confirmMember=email;renderView();return}S.confirmMember=null;
+  const {error}=await S.sb.from("members").delete().eq("email",email);
+  if(error){toast("Couldn't remove: "+error.message);return}S.members.delete(email);toast("Removed from the team");renderView();
+}
+
+/* ---------- boot ---------- */
+const TABLES={entries:S.entries,plots:S.plots,register:S.register};
+function rowToItem(r){return {...(r.data||{}),id:r.id,updatedAt:r.updated_at?Date.parse(r.updated_at):null,updatedBy:r.updated_by}}
+async function loadAll(){
+  for(const [t,map] of Object.entries(TABLES)){
+    const {data,error}=await S.sb.from(t).select("*");
+    S.loaded[t]=true;
+    if(error){$("#banner").innerHTML=`<div class="banner">Couldn't load the bible: ${esc(error.message)}. Reload the page to try again.</div>`;continue}
+    map.clear();data.forEach(r=>map.set(r.id,rowToItem(r)));
+  }
+  const {data:ms}=await S.sb.from("members").select("*");
+  S.members.clear();(ms||[]).forEach(m=>S.members.set(m.email,m));
+  renderView();if(S.sel&&S.mode==="view")renderDrawer();
+}
+function listen(){
+  S.sb.channel("bible").on("postgres_changes",{event:"*",schema:"public"},p=>{
+    if(p.table==="members"){if(p.eventType==="DELETE")S.members.delete(p.old.email);else S.members.set(p.new.email,p.new)}
+    else{const map=TABLES[p.table];if(!map)return;
+      if(p.eventType==="DELETE")map.delete(p.old.id);else map.set(p.new.id,rowToItem(p.new));}
+    renderView();if(S.sel&&S.mode==="view")renderDrawer();
+  }).subscribe();
+}
+async function showApp(session){
+  S.me=(session.user.email||"").toLowerCase();
+  $("#loginScreen").hidden=true;$("#app").hidden=false;$("#who").textContent=S.me;
+  const {data:isMember}=await S.sb.rpc("is_member");
+  if(!isMember){$("#banner").innerHTML=`<div class="banner">${esc(S.me)} is not on the team list. Ask a teammate to add you on the Team page.</div>`;S.canWrite=false;S.loaded={entries:true,plots:true,register:true};renderView();return}
+  route();await loadAll();listen();
+}
+function showLogin(msg){$("#app").hidden=true;$("#loginScreen").hidden=false;if(msg)$("#loginMsg").textContent=msg}
+$("#loginForm").addEventListener("submit",async ev=>{
+  ev.preventDefault();const email=$("#loginEmail").value.trim().toLowerCase();const btn=$("#loginBtn"),msg=$("#loginMsg");
+  btn.disabled=true;msg.textContent="Checking…";
+  const {data:ok,error:e1}=await S.sb.rpc("can_sign_in",{p_email:email});
+  if(e1){msg.textContent="Couldn't reach the database: "+e1.message;btn.disabled=false;return}
+  if(!ok){msg.textContent="This email isn't on the team list. Ask a teammate to add you on the Team page.";btn.disabled=false;return}
+  const {error}=await S.sb.auth.signInWithOtp({email,options:{emailRedirectTo:location.origin+location.pathname}});
+  btn.disabled=false;
+  msg.textContent=error?("Couldn't send the link: "+error.message):"Check your inbox for a sign-in link. It can take a minute; check spam too.";
+});
+$("#signOut").addEventListener("click",async()=>{await S.sb.auth.signOut();location.hash="";location.reload()});
+
+(async()=>{
+  if(!window.supabase){document.body.innerHTML="<p style='padding:24px'>The app couldn't load. Check your internet connection and reload.</p>";return}
+  S.sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+  const {data:{session}}=await S.sb.auth.getSession();
+  if(session)showApp(session);else showLogin();
+  S.sb.auth.onAuthStateChange((evt,sess)=>{if(evt==="SIGNED_IN"&&sess&&$("#app").hidden)showApp(sess);if(evt==="SIGNED_OUT")showLogin()});
+})();
+</script>
+</body>
+</html>
