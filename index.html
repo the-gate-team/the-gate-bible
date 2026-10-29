@@ -386,14 +386,14 @@ function viewHome(){
   <div class="hgrid">
     ${card("codex","Codex","The encyclopedia of the world. One entry per place, faction, character, god, event, item, people, or loose idea.",
       ["Search and filter by type, module or canon status.","Open an entry to read it, edit it, or follow its links to related entries.","Each entry has a public part (what everyone knows) and a secret part (what only the team knows).","Use type “Idea” for anything not yet sorted."],n(all.length,"entry","entries"))}
-    ${card("plots","Plots & clocks","The stories in motion: threats that grow, faction projects, and subplots.",
-      ["Each plot has a clock: a pie split into 4, 6 or 8 slices. Fill a slice with + when the plot makes progress, erase one with − after a setback.","When the clock is full, the plot succeeds and the world changes.","Tick the portents (warning signs) as they happen in the roleplay.","Between two chapters or sessions, use “Faction turn” to move every clock at once."],n(active.length,"active plot","active plots"))}
     ${card("timeline","Timeline","Every Event from the Codex, in year order, so the team agrees on what happened when.",
       ["Years are in DR (Dalereckoning). BG3 ends in 1492 DR.","Add an event with “New event”, or create a Codex entry of type Event with a year."],n(events,"event","events"))}
-    ${card("map","Map","Your maps, with named and tagged places linked to the Codex.",
-      ["Upload your own map images, even without any names on them.","Click “Add a place”, click on the map, then name it, tag it, and add it to the Codex in the same step.","Find places by name, tag or type; hide the names when the map gets crowded.","Click a place to read its entry; from an entry, “On the map” takes you to it."],n(S.maps.size,"map","maps"))}
     ${card("canon","Canon","Where the team decides what is official.",
       ["New ideas start as <b>Proposal</b>. Approve them to make them <b>Project canon</b>, or discard them.","<b>Official canon</b> means it comes from the games or D&amp;D books.","The contradictions register records each time we knowingly change official lore, and why.","Download a backup of the whole bible from the bottom of this page."],proposals?n(proposals,"to review","to review"):"Up to date")}
+    ${card("plots","Plots & clocks","The stories in motion: threats that grow, faction projects, and subplots.",
+      ["Each plot has a clock: a pie split into 4, 6 or 8 slices. Fill a slice with + when the plot makes progress, erase one with − after a setback.","When the clock is full, the plot succeeds and the world changes.","Tick the portents (warning signs) as they happen in the roleplay.","Between two chapters or sessions, use “Faction turn” to move every clock at once."],n(active.length,"active plot","active plots"))}
+    ${card("map","Map","Your maps, with named and tagged places linked to the Codex.",
+      ["Upload your own map images, even without any names on them.","Click “Add a place”, click on the map, then name it, tag it, and add it to the Codex in the same step.","Find places by name, tag or type; hide the names when the map gets crowded.","Click a place to read its entry; from an entry, “On the map” takes you to it."],n(S.maps.size,"map","maps"))}
     ${card("references","References","Background from the games, to check facts quickly.",
       ["A summary of the lore of Baldur's Gate 1, 2, Throne of Bhaal and 3.","Every faction from the games: guilds, cults, orders and powers.","Supporting and minor characters, with their status at the end of BG3.","Add any of them to the Codex in one click, then decide what became of them."],`${FACTIONS.length} factions · ${NPCS.length} characters`)}
   </div>
