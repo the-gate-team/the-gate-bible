@@ -154,6 +154,15 @@ body{margin:0}
 .pin.sel .pindot{outline:3px solid var(--ink);outline-offset:1px}
 .pinlabel{position:absolute;left:13px;top:-11px;white-space:nowrap;background:var(--surface);color:var(--ink);font-size:12px;line-height:1.5;padding:0 6px;border-radius:4px;border:1px solid var(--line);pointer-events:none}
 .pin:hover .pinlabel,.pin.sel .pinlabel{border-color:var(--pc);font-weight:700}
+.mapvp.nolabels .pinlabel{display:none}
+.mapvp.nolabels .pin:hover .pinlabel,.mapvp.nolabels .pin.sel .pinlabel{display:block}
+.swatches{display:flex;gap:8px;flex-wrap:wrap}
+.swatches label{cursor:pointer}
+.swatches input{position:absolute;opacity:0;pointer-events:none}
+.swatches span:not(.sr){display:block;width:26px;height:26px;border-radius:50%;border:2px solid var(--line)}
+.swatches input:checked+span{outline:3px solid var(--ink);outline-offset:2px}
+.swatches input:focus-visible+span{outline:3px solid var(--accent);outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 .maplegend{display:flex;gap:14px;flex-wrap:wrap;font-size:.85rem;color:var(--muted);margin-top:8px}
 .maplegend i,.dotsm{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:middle}
 .lore{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:16px;max-width:820px}
@@ -382,8 +391,8 @@ function viewHome(){
       ["Each plot has a clock: a pie split into 4, 6 or 8 slices. Fill a slice with + when the plot makes progress, erase one with − after a setback.","When the clock is full, the plot succeeds and the world changes.","Tick the portents (warning signs) as they happen in the roleplay.","Between two chapters or sessions, use “Faction turn” to move every clock at once."],n(active.length,"active plot","active plots"))}
     ${card("timeline","Timeline","Every Event from the Codex, in year order, so the team agrees on what happened when.",
       ["Years are in DR (Dalereckoning). BG3 ends in 1492 DR.","Add an event with “New event”, or create a Codex entry of type Event with a year."],n(events,"event","events"))}
-    ${card("map","Map","Your maps, with pins for places, factions, characters and events.",
-      ["Upload a map image (one your team drew, or one you have the right to use).","Scroll or pinch to zoom, drag to move around.","Click “Add pin”, then click on the map, and link the pin to a Codex entry.","Click a pin to read its entry; from an entry, “On the map” takes you to its pin."],n(S.maps.size,"map","maps"))}
+    ${card("map","Map","Your maps, with named and tagged places linked to the Codex.",
+      ["Upload your own map images, even without any names on them.","Click “Add a place”, click on the map, then name it, tag it, and add it to the Codex in the same step.","Find places by name, tag or type; hide the names when the map gets crowded.","Click a place to read its entry; from an entry, “On the map” takes you to it."],n(S.maps.size,"map","maps"))}
     ${card("canon","Canon","Where the team decides what is official.",
       ["New ideas start as <b>Proposal</b>. Approve them to make them <b>Project canon</b>, or discard them.","<b>Official canon</b> means it comes from the games or D&amp;D books.","The contradictions register records each time we knowingly change official lore, and why.","Download a backup of the whole bible from the bottom of this page."],proposals?n(proposals,"to review","to review"):"Up to date")}
     ${card("references","References","Background from the games, to check facts quickly.",
@@ -730,7 +739,6 @@ function mapsSorted(){return [...S.maps.values()].sort((a,b)=>(a.order??0)-(b.or
 function currentMap(){if(!S.mapId||!S.maps.has(S.mapId))S.mapId=(mapsSorted()[0]||{}).id||null;return S.maps.get(S.mapId)}
 function pinEntry(p){return p.entryId?S.entries.get(p.entryId):null}
 function pinLabel(p){const e=pinEntry(p);return p.label||(e&&e.name)||"Unnamed pin"}
-function pinColor(p){const e=pinEntry(p);return PIN_COLORS[e?e.type:"Idea"]||"var(--accent)"}
 async function mapUrl(m){
   if(!m||!m.image)return null;const c=S.mapUrls[m.image];
   if(c&&c.exp>Date.now())return c.url;
@@ -742,34 +750,6 @@ async function mapUrl(m){
   if(S.view==="map")renderView();return data.signedUrl;
 }
 function cachedUrl(m){const c=m&&m.image&&S.mapUrls[m.image];return c&&c.exp>Date.now()?c.url:null}
-function viewMap(){
-  const ms=mapsSorted(),m=currentMap();
-  const head=`<h2 class="view">Map</h2><p class="lede">Place the world's locations, factions, characters and events on your maps. Scroll or pinch to zoom, drag to move, click a pin to see its entry.</p>`;
-  if(!S.loaded.maps)return head+`<div class="empty"><b>Loading maps…</b></div>`;
-  const tabs=`<div class="bar">${ms.map(x=>`<button class="btn small${x.id===S.mapId?" primary":""}" data-mapsel="${x.id}">${esc(x.name||"Untitled map")}</button>`).join("")}
-    ${S.canWrite?`<button class="btn small" id="newMapBtn">New map</button>`:""}</div>`;
-  if(!m)return head+tabs+`<div class="empty"><b>No map yet</b>Click “New map” and upload a map image: one your team drew, or any map you have the right to use. A scan or photo of a hand-drawn sketch works well.</div>`;
-  const url=cachedUrl(m);if(!url)mapUrl(m);
-  const pins=[...S.pins.values()].filter(p=>p.mapId===m.id);
-  const shown=pins.filter(p=>!S.pinType||((pinEntry(p)||{}).type||"Idea")===S.pinType).sort((a,b)=>pinLabel(a).localeCompare(pinLabel(b)));
-  const types=[...new Set(pins.map(p=>(pinEntry(p)||{}).type||"Idea"))].sort();
-  const hint=S.moveId?"Click the new position for this pin. Press Escape to cancel.":S.addMode?"Click on the map where the new pin should go. Press Escape to cancel.":"";
-  return head+tabs+`<div class="bar">
-      <button class="btn small" data-zoom="1.4" aria-label="Zoom in">+</button><button class="btn small" data-zoom="0.7" aria-label="Zoom out">−</button><button class="btn small" id="fitBtn">Fit</button>
-      ${S.canWrite?`<button class="btn small${S.addMode?" primary":""}" id="addPinBtn">${S.addMode?"Click on the map…":"Add pin"}</button><button class="btn small ghost" id="editMapBtn">Edit map</button>`:""}
-      ${types.length>1?`<select id="pinType" aria-label="Show pins of type"><option value="">All pins</option>${types.map(t=>`<option ${S.pinType===t?"selected":""}>${t}</option>`).join("")}</select>`:""}
-    </div>
-    ${hint?`<div class="banner" style="margin-bottom:8px">${hint}</div>`:""}
-    <div class="mapvp${S.addMode||S.moveId?" placing":""}" id="mapvp" tabindex="0" aria-label="Map of ${esc(m.name)}">
-      ${url?`<div class="mapinner" id="mapinner" style="width:${m.width}px;height:${m.height}px">
-        <img src="${esc(url)}" alt="${esc(m.name)}" width="${m.width}" height="${m.height}" draggable="false">
-        ${shown.map(p=>`<button class="pin${S.sel&&S.sel.kind==="pin"&&S.sel.id===p.id?" sel":""}" data-pin="${p.id}" style="left:${(p.x*100).toFixed(3)}%;top:${(p.y*100).toFixed(3)}%;--pc:${pinColor(p)}" aria-label="${esc(pinLabel(p))}"><span class="pindot"></span><span class="pinlabel">${esc(pinLabel(p))}</span></button>`).join("")}
-      </div>`:`<div class="empty" style="border:0;margin:auto">Loading the map image…</div>`}
-    </div>
-    <div class="maplegend">${Object.entries(PIN_COLORS).filter(([t])=>types.includes(t)).map(([t,c])=>`<span><i style="background:${c}"></i>${t}</span>`).join("")}</div>
-    <h3 class="sub">Pins on this map (${shown.length})</h3>
-    ${shown.length?`<div class="links">${shown.map(p=>`<button class="chip" data-focuspin="${p.id}"><i class="dotsm" style="background:${pinColor(p)}"></i>${esc(pinLabel(p))}</button>`).join("")}</div>`:`<p class="note">No pins yet. ${S.canWrite?"Click “Add pin”, then click on the map.":""}</p>`}`;
-}
 function mv(){const m=currentMap();if(!m)return null;return S.mvs[m.id]||(S.mvs[m.id]={z:0,x:0,y:0,fit:true})}
 function applyMV(){
   const m=currentMap(),inner=$("#mapinner"),vp=$("#mapvp");if(!m||!inner||!vp)return;
@@ -798,6 +778,9 @@ function bindMap(){
   on("fitBtn",()=>fitMap());
   v.querySelectorAll("[data-zoom]").forEach(b=>b.onclick=()=>zoomAt(+b.dataset.zoom));
   const pt=$("#pinType");if(pt)pt.onchange=e=>{S.pinType=e.target.value;renderView()};
+  const pg=$("#pinTag");if(pg)pg.onchange=e=>{S.pinTag=e.target.value;renderView()};
+  const pq=$("#pinQ");if(pq)pq.oninput=e=>{S.pinQ=e.target.value;const pos=e.target.selectionStart;renderView();const n=$("#pinQ");n.focus();n.setSelectionRange(pos,pos)};
+  const sl=$("#showLabels");if(sl)sl.onchange=e=>{S.hideLabels=!e.target.checked;renderView()};
   v.querySelectorAll("[data-focuspin]").forEach(b=>b.onclick=()=>{const p=S.pins.get(b.dataset.focuspin);if(p){centerOn(p);openDrawer({kind:"pin",id:p.id})}});
   const vp=$("#mapvp");if(!vp)return;
   applyMV();
@@ -829,7 +812,7 @@ function bindMap(){
     const r=inner.getBoundingClientRect();const x=(e.clientX-r.left)/r.width,y=(e.clientY-r.top)/r.height;
     if(x<0||y<0||x>1||y>1)return;
     if(S.moveId){movePin(S.moveId,x,y);return}
-    S.addMode=false;openDrawer({kind:"pin",id:null,draft:{id:uid(),mapId:m.id,x,y,label:"",entryId:""}},"edit");
+    S.addMode=false;openDrawer({kind:"pin",id:null,draft:{id:uid(),mapId:m.id,x,y,label:"",entryId:"",tags:[],color:"",note:""}},"edit");
   };
   vp.addEventListener("pointerup",end);vp.addEventListener("pointercancel",e=>{pts.delete(e.pointerId);start=null;pinch=null});
 }
@@ -837,29 +820,110 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape"&&(S.addMode||S.moveI
 window.addEventListener("resize",()=>{if(S.view==="map")applyMV()});
 
 /* pins and maps in the drawer */
+const PIN_SWATCHES=[["","Automatic"],["#b5462f","Red"],["#c9822b","Orange"],["#b8a032","Gold"],["#4f8a3c","Green"],["#2f8a8a","Teal"],["#3f62b0","Blue"],["#7b4fae","Purple"],["#4a4a52","Black"]];
+function pinColor(p){if(p.color)return p.color;const e=pinEntry(p);return PIN_COLORS[e?e.type:"Idea"]||"var(--accent)"}
+function pinTags(p){return (p.tags||[]).filter(Boolean)}
+function parseTags(v){return [...new Set(String(v||"").split(",").map(s=>s.trim()).filter(Boolean))]}
+function viewMap(){
+  const ms=mapsSorted(),m=currentMap();
+  const head=`<h2 class="view">Map</h2><p class="lede">Name the places on your maps and tag them. Scroll or pinch to zoom, drag to move, click a pin to see what it marks.</p>`;
+  if(!S.loaded.maps)return head+`<div class="empty"><b>Loading maps…</b></div>`;
+  const tabs=`<div class="bar">${ms.map(x=>`<button class="btn small${x.id===S.mapId?" primary":""}" data-mapsel="${x.id}">${esc(x.name||"Untitled map")}</button>`).join("")}
+    ${S.canWrite?`<button class="btn small" id="newMapBtn">New map</button>`:""}</div>`;
+  if(!m)return head+tabs+`<div class="empty"><b>No map yet</b>Click “New map” and upload a map image: one your team drew, or any map you have the right to use. Maps without names on them work best: you name the places here.</div>`;
+  const url=cachedUrl(m);if(!url)mapUrl(m);
+  const pins=[...S.pins.values()].filter(p=>p.mapId===m.id);
+  const q=(S.pinQ||"").toLowerCase();
+  const shown=pins.filter(p=>(!S.pinType||((pinEntry(p)||{}).type||"Unlinked")===S.pinType)
+      &&(!S.pinTag||pinTags(p).includes(S.pinTag))
+      &&(!q||(pinLabel(p)+" "+pinTags(p).join(" ")+" "+(p.note||"")).toLowerCase().includes(q)))
+    .sort((a,b)=>pinLabel(a).localeCompare(pinLabel(b)));
+  const types=[...new Set(pins.map(p=>(pinEntry(p)||{}).type||"Unlinked"))].sort();
+  const tags=[...new Set(pins.flatMap(pinTags))].sort((a,b)=>a.localeCompare(b));
+  const hint=S.moveId?"Click the new position for this pin. Press Escape to cancel.":S.addMode?"Click on the map where the place is. Press Escape to cancel.":"";
+  return head+tabs+`<div class="bar">
+      <button class="btn small" data-zoom="1.4" aria-label="Zoom in">+</button><button class="btn small" data-zoom="0.7" aria-label="Zoom out">−</button><button class="btn small" id="fitBtn">Fit</button>
+      ${S.canWrite?`<button class="btn small${S.addMode?" primary":""}" id="addPinBtn">${S.addMode?"Click on the map…":"Add a place"}</button>`:""}
+      <label class="note" style="display:flex;gap:4px;align-items:center"><input type="checkbox" id="showLabels" ${S.hideLabels?"":"checked"}> Names</label>
+      ${S.canWrite?`<button class="btn small ghost" id="editMapBtn">Edit map</button>`:""}
+    </div>
+    <div class="bar"><input type="search" id="pinQ" placeholder="Find a place or tag" value="${esc(S.pinQ||"")}" aria-label="Find a place on the map">
+      ${tags.length?`<select id="pinTag" aria-label="Show places with tag"><option value="">All tags</option>${tags.map(t=>`<option ${S.pinTag===t?"selected":""}>${esc(t)}</option>`).join("")}</select>`:""}
+      ${types.length>1?`<select id="pinType" aria-label="Show places of type"><option value="">All types</option>${types.map(t=>`<option ${S.pinType===t?"selected":""}>${esc(t)}</option>`).join("")}</select>`:""}
+    </div>
+    ${hint?`<div class="banner" style="margin-bottom:8px">${hint}</div>`:""}
+    <div class="mapvp${S.addMode||S.moveId?" placing":""}${S.hideLabels?" nolabels":""}" id="mapvp" tabindex="0" aria-label="Map of ${esc(m.name)}">
+      ${url?`<div class="mapinner" id="mapinner" style="width:${m.width}px;height:${m.height}px">
+        <img src="${esc(url)}" alt="${esc(m.name)}" width="${m.width}" height="${m.height}" draggable="false">
+        ${shown.map(p=>`<button class="pin${S.sel&&S.sel.kind==="pin"&&S.sel.id===p.id?" sel":""}" data-pin="${p.id}" style="left:${(p.x*100).toFixed(3)}%;top:${(p.y*100).toFixed(3)}%;--pc:${pinColor(p)}" aria-label="${esc(pinLabel(p))}"><span class="pindot"></span><span class="pinlabel">${esc(pinLabel(p))}</span></button>`).join("")}
+      </div>`:`<div class="empty" style="border:0;margin:auto">Loading the map image…</div>`}
+    </div>
+    <h3 class="sub">Places on this map (${shown.length}${shown.length!==pins.length?` of ${pins.length}`:""})</h3>
+    ${shown.length?`<div class="list">${shown.map(p=>{const e=pinEntry(p);return `<button class="row" data-focuspin="${p.id}">
+        <span class="name"><i class="dotsm" style="background:${pinColor(p)}"></i>${esc(pinLabel(p))}</span>
+        <span class="meta">${e?`<span class="chip type">${esc(e.type)}</span>`:""}${pinTags(p).map(t=>`<span class="chip">${esc(t)}</span>`).join("")}</span>
+        ${p.note||(e&&e.summary)?`<span class="sum">${esc(p.note||e.summary)}</span>`:""}</button>`}).join("")}</div>`
+      :`<p class="note">${pins.length?"No place matches.":"No places yet."+(S.canWrite?" Click “Add a place”, then click on the map.":"")}</p>`}`;
+}
 function pinView(){
-  const p=S.pins.get(S.sel.id);if(!p)return `<div class="dhead"><h2>Pin removed</h2>${closeBtn()}</div>`;
+  const p=S.pins.get(S.sel.id);if(!p)return `<div class="dhead"><h2>Place removed</h2>${closeBtn()}</div>`;
   const e=pinEntry(p),m=S.maps.get(p.mapId);
   return `<div class="dhead"><div><h2>${esc(pinLabel(p))}</h2><div class="fr">On ${esc(m?m.name:"a map")}</div></div>${closeBtn()}</div>
-  ${e?`<div class="chips"><span class="chip type">${esc(e.type)}</span>${statusChip(e.status)}</div>
-    ${e.summary?`<div class="sec"><h4>Summary</h4><p>${esc(e.summary)}</p></div>`:""}
+  <div class="chips">${e?`<span class="chip type">${esc(e.type)}</span>${statusChip(e.status)}`:""}${pinTags(p).map(t=>`<button class="chip" data-tagfilter="${esc(t)}" title="Show all places tagged ${esc(t)}">${esc(t)}</button>`).join("")}</div>
+  ${p.note?`<div class="sec"><h4>Note</h4><p>${esc(p.note)}</p></div>`:""}
+  ${e?`${e.summary?`<div class="sec"><h4>Summary</h4><p>${esc(e.summary)}</p></div>`:""}
     ${e.public?`<div class="sec"><h4>Public part</h4><p>${esc(e.public)}</p></div>`:""}
     <div class="actions"><button class="btn primary" data-open-entry="${e.id}">Open in Codex</button></div>`
-   :`<p class="note">This pin isn't linked to a Codex entry.${p.entryId?" (The linked entry was deleted.)":""}</p>`}
-  ${p.note?`<div class="sec"><h4>Note</h4><p>${esc(p.note)}</p></div>`:""}
-  ${S.canWrite?`<div class="actions"><button class="btn" data-edit>Edit pin</button><button class="btn" id="movePinBtn">Move</button><button class="btn danger" data-del>${S.confirmDel?"Click again to delete":"Delete pin"}</button></div>`:""}`;
+   :`<p class="note">${p.entryId?"The Codex entry this place was linked to has been deleted.":"Not in the Codex yet."}${S.canWrite?" Edit the place to create or link its Codex entry.":""}</p>`}
+  ${S.canWrite?`<div class="actions"><button class="btn" data-edit>Edit</button><button class="btn" id="movePinBtn">Move</button><button class="btn danger" data-del>${S.confirmDel?"Click again to delete":"Delete"}</button></div>`:""}`;
 }
 function pinForm(){
-  const p=S.draft;const ents=[...S.entries.values()].sort((a,b)=>(a.type==="Location"?0:1)-(b.type==="Location"?0:1)||byName(a,b));
-  return `<div class="dhead"><h2>${S.pins.has(p.id)?"Edit pin":"New pin"}</h2>${closeBtn()}</div>
+  const p=S.draft;const isNew=!S.pins.has(p.id);
+  const mode=p._mode||(p.entryId?"link":isNew?"create":"none");
+  const ents=[...S.entries.values()].sort((a,b)=>(a.type==="Location"?0:1)-(b.type==="Location"?0:1)||byName(a,b));
+  const allTags=[...new Set([...S.pins.values()].flatMap(pinTags))].sort();
+  return `<div class="dhead"><h2>${isNew?"New place":"Edit place"}</h2>${closeBtn()}</div>
   <form class="form" id="pinForm" style="margin-top:12px">
-    <label>Codex entry <span class="hint">What this pin marks. Places are listed first.</span>
-      <select id="pn_entry"><option value="">No entry, just a label</option>${ents.map(x=>`<option value="${x.id}" ${p.entryId===x.id?"selected":""}>${esc(x.name)} (${esc(x.type)})</option>`).join("")}</select></label>
-    <label>Label <span class="hint">Leave empty to use the entry's name</span><input type="text" id="pn_label" value="${esc(p.label)}"></label>
-    <label>Note <span class="hint">Optional, only shown on this pin</span><textarea id="pn_note" style="min-height:48px">${esc(p.note)}</textarea></label>
-    ${S.entries.size?"":`<p class="note">Tip: create the place in the Codex first, then link it here.</p>`}
-    <div class="actions"><button class="btn primary" type="submit">Save pin</button><button class="btn" type="button" data-close>Cancel</button></div>
+    <label>Name <span class="hint">Shown on the map</span><input type="text" id="pn_label" value="${esc(p.label||"")}" ${mode==="link"?"":"required"} placeholder="e.g. Saltmarsh Gate"></label>
+    <label>Tags <span class="hint">Comma separated, e.g. city, ruin, danger</span><input type="text" id="pn_tags" value="${esc(pinTags(p).join(", "))}" list="pn_taglist" autocomplete="off"></label>
+    ${allTags.length?`<datalist id="pn_taglist">${allTags.map(t=>`<option value="${esc(t)}">`).join("")}</datalist><div class="links">${allTags.slice(0,16).map(t=>`<button type="button" class="chip" data-addtag="${esc(t)}">+ ${esc(t)}</button>`).join("")}</div>`:""}
+    <fieldset class="form" style="border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;margin:0">
+      <legend style="font-weight:500;font-size:.93rem;padding:0 4px">In the Codex</legend>
+      <label style="flex-direction:row;gap:8px;font-weight:400"><input type="radio" name="pn_mode" value="create" ${mode==="create"?"checked":""}> Create a new Codex entry with this name</label>
+      ${mode==="create"?`<label style="margin-left:24px">Type <select id="pn_type">${Object.keys(TYPES).map(t=>`<option ${(p._type||"Location")===t?"selected":""}>${t}</option>`).join("")}</select></label>`:""}
+      <label style="flex-direction:row;gap:8px;font-weight:400"><input type="radio" name="pn_mode" value="link" ${mode==="link"?"checked":""} ${ents.length?"":"disabled"}> Link to an existing entry</label>
+      ${mode==="link"?`<label style="margin-left:24px"><select id="pn_entry"><option value="">Choose an entry…</option>${ents.map(x=>`<option value="${x.id}" ${p.entryId===x.id?"selected":""}>${esc(x.name)} (${esc(x.type)})</option>`).join("")}</select></label>`:""}
+      <label style="flex-direction:row;gap:8px;font-weight:400"><input type="radio" name="pn_mode" value="none" ${mode==="none"?"checked":""}> Just a place on the map for now</label>
+    </fieldset>
+    <label>Note <span class="hint">Optional, shown when someone clicks the place</span><textarea id="pn_note" style="min-height:48px">${esc(p.note||"")}</textarea></label>
+    <div><div style="font-weight:500;font-size:.93rem;margin-bottom:4px">Color</div><div class="swatches" role="radiogroup" aria-label="Pin color">${PIN_SWATCHES.map(([c,n])=>`<label title="${n}"><input type="radio" name="pn_color" value="${c}" ${(p.color||"")===c?"checked":""}><span style="background:${c||"conic-gradient(var(--accent),var(--official),var(--project),var(--proposal),var(--accent))"}"></span><span class="sr">${n}</span></label>`).join("")}</div>
+      <p class="note" style="margin:4px 0 0">Automatic uses the color of the linked entry's type.</p></div>
+    <div class="actions"><button class="btn primary" type="submit">Save place</button><button class="btn" type="button" data-close>Cancel</button></div>
   </form>`;
+}
+function readPinForm(){
+  const p=S.draft,g=id=>{const el=document.getElementById(id);return el?el.value:undefined};
+  p.label=(g("pn_label")||"").trim();p.tags=parseTags(g("pn_tags"));p.note=(g("pn_note")||"").trim();
+  const c=document.querySelector('input[name="pn_color"]:checked');p.color=c?c.value:"";
+  const md=document.querySelector('input[name="pn_mode"]:checked');p._mode=md?md.value:"none";
+  if(g("pn_type")!==undefined)p._type=g("pn_type");
+  if(g("pn_entry")!==undefined)p.entryId=g("pn_entry");
+}
+async function savePin(){
+  readPinForm();const p=S.draft;
+  if(p._mode==="link"&&!p.entryId){toast("Choose the entry to link, or pick another option.");return}
+  if(p._mode!=="link"&&!p.label){toast("Give the place a name.");return}
+  if(p._mode==="create"){
+    const type=p._type||"Location";const id=uid();const m=S.maps.get(p.mapId);
+    const e={id,type,name:p.label,status:"Proposal",module:DEFAULT_MODULE[type],summary:p.note||"",fields:{},links:[],tags:p.tags,
+      changed:"",public:"",secret:"",source:""};
+    if(!(await write("entries/"+id,stamp(e))))return;
+    S.entries.set(id,clean(e));p.entryId=id;
+  }
+  if(p._mode==="none")p.entryId="";
+  if(p.entryId&&p.label===((S.entries.get(p.entryId)||{}).name||""))p.label="";
+  const body=clean(p);delete body._mode;delete body._type;
+  if(await write("pins/"+p.id,stamp(body),p._mode==="create"?"Place saved and added to the Codex":"Place saved")){S.pins.set(p.id,body);S.sel={kind:"pin",id:p.id};S.mode="view";S.draft=null;renderDrawer();renderView()}
 }
 function mapForm(){
   const m=S.draft;const exists=S.maps.has(m.id);
@@ -875,9 +939,10 @@ function mapForm(){
 }
 function bindMapDrawer(d){
   const pf=d.querySelector("#pinForm");
-  if(pf)pf.onsubmit=async ev=>{ev.preventDefault();const p=S.draft;p.entryId=$("#pn_entry").value;p.label=$("#pn_label").value.trim();p.note=$("#pn_note").value.trim();
-    if(!p.entryId&&!p.label){toast("Pick a Codex entry or write a label.");return}
-    if(await write("pins/"+p.id,stamp(p),"Pin saved")){S.pins.set(p.id,clean(p));S.sel={kind:"pin",id:p.id};S.mode="view";S.draft=null;renderDrawer();renderView()}};
+  if(pf){pf.onsubmit=ev=>{ev.preventDefault();savePin()};
+    pf.querySelectorAll('input[name="pn_mode"]').forEach(r=>r.onchange=()=>{readPinForm();renderDrawer()});
+    pf.querySelectorAll("[data-addtag]").forEach(b=>b.onclick=()=>{const i=$("#pn_tags");const t=parseTags(i.value);if(!t.includes(b.dataset.addtag))t.push(b.dataset.addtag);i.value=t.join(", ")});}
+  d.querySelectorAll("[data-tagfilter]").forEach(b=>b.onclick=()=>{S.pinTag=b.dataset.tagfilter;S.pinQ="";if(location.hash!=="#map")location.hash="#map";else renderView()});
   const mvb=d.querySelector("#movePinBtn");if(mvb)mvb.onclick=()=>{S.moveId=S.sel.id;S.addMode=false;if(location.hash!=="#map")location.hash="#map";else renderView()};
   const mf=d.querySelector("#mapForm");
   if(mf){mf.onsubmit=async ev=>{ev.preventDefault();await saveMap()};
