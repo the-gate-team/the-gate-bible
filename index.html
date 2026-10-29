@@ -37,7 +37,7 @@ header{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var
 .brand{font-family:var(--f-display);font-size:1.5rem;font-weight:700;letter-spacing:.02em;margin:0;line-height:1.1}
 .brand small{display:block;font-family:var(--f-mono);font-size:.7rem;color:var(--muted);letter-spacing:.06em;font-weight:400}
 nav.tabs{display:flex;gap:4px;flex-wrap:wrap;margin-left:auto}
-nav.tabs a{padding:6px 12px;border-radius:var(--r);text-decoration:none;color:var(--muted);font-weight:500}
+nav.tabs a{padding:6px 9px;white-space:nowrap;border-radius:var(--r);text-decoration:none;color:var(--muted);font-weight:500}
 nav.tabs a[aria-current="page"]{background:var(--accent-soft);color:var(--ink)}
 .tools{display:flex;gap:8px;flex-wrap:wrap}
 .btn{border:1px solid var(--line);background:var(--surface);border-radius:var(--r);padding:6px 12px;cursor:pointer;font-weight:500}
@@ -179,6 +179,14 @@ body{margin:0}
 .votebtns{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 .btn.voted-yes{background:var(--project);border-color:var(--project);color:var(--surface)}
 .btn.voted-no{background:var(--danger);border-color:var(--danger);color:var(--surface)}
+.rels{display:grid;grid-template-columns:max-content 1fr;gap:6px 12px;margin:4px 0 0;align-items:start}
+.rels dt{font-size:.85rem;color:var(--muted);padding-top:2px}.rels dd{margin:0;display:flex;gap:6px;flex-wrap:wrap}
+.relset{border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;margin:0;display:flex;flex-direction:column;gap:10px}
+.relset legend{font-weight:500;font-size:.93rem;padding:0 4px}
+.linkbtn{background:none;border:0;padding:0;font:inherit;color:var(--ink);cursor:pointer;text-align:left}
+.linkbtn:hover{color:var(--accent)}
+.castcard .actions{margin-top:auto}
+@media (max-width:1400px){.who{display:none}}
 .maplegend{display:flex;gap:14px;flex-wrap:wrap;font-size:.85rem;color:var(--muted);margin-top:8px}
 .maplegend i,.dotsm{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:middle}
 .lore{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:16px;max-width:820px}
@@ -216,6 +224,7 @@ body{margin:0}
       <a href="#codex" data-view="codex">Codex</a>
       <a href="#timeline" data-view="timeline">Timeline</a>
       <a href="#canon" data-view="canon">Canon</a>
+      <a href="#cast" data-view="cast">Factions &amp; characters</a>
       <a href="#plots" data-view="plots">Plots &amp; clocks</a>
       <a href="#map" data-view="map">Map</a>
       <a href="#references" data-view="references">References</a>
@@ -244,8 +253,8 @@ const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 <script>
 const TYPES = {
   Location:{fields:["Scale","Controlled by","Mood (3 words)","Resources","Dangers","Adventure hooks"]},
-  Faction:{fields:["Goal","Means","Leader","Key members","Allies","Enemies","What it wants from Baldur's Gate"]},
-  NPC:{fields:["Role","Desire","Fear","Voice and verbal tic","Faction ties","What they think of BG3's heroes"]},
+  Faction:{fields:["Goal","Means","Resources","Base of operations","How it is organized","What it wants from Baldur's Gate"]},
+  NPC:{fields:["Role","Appearance","Desire","Fear","Voice and verbal tic","What they think of BG3's heroes"]},
   Deity:{fields:["Domains","Alignment","Clergy","State after BG3","What its worshippers want"]},
   Event:{fields:["Place","Actors","Causes","Consequences","Who remembers it and how"]},
   Item:{fields:["Power","Cost","Origin","Current holder","Who is looking for it"]},
@@ -284,7 +293,7 @@ function clockSVG(filled,size,px=56){
 }
 
 /* ---------- routing ---------- */
-function route(){const h=location.hash.replace("#","");S.view=["home","codex","plots","timeline","map","canon","references","team"].includes(h)?h:"home";
+function route(){const h=location.hash.replace("#","");S.view=["home","codex","plots","timeline","map","canon","cast","references","team"].includes(h)?h:"home";
   document.querySelectorAll("nav.tabs a").forEach(a=>{if(a.dataset.view===S.view)a.setAttribute("aria-current","page");else a.removeAttribute("aria-current")});
   renderView();}
 window.addEventListener("hashchange",route);
@@ -299,9 +308,11 @@ function renderView(){
   else if(S.view==="team")v.innerHTML=viewTeam();
   else if(S.view==="references")v.innerHTML=viewReferences();
   else if(S.view==="map")v.innerHTML=viewMap();
+  else if(S.view==="cast")v.innerHTML=viewCast();
   else v.innerHTML=viewCanon();
   bindView();
   if(S.view==="map")bindMap();
+  if(S.view==="cast")bindCast();
 }
 function filteredEntries(){
   const q=S.q.trim().toLowerCase();
@@ -414,6 +425,8 @@ function viewHome(){
       ["Years are in DR (Dalereckoning). BG3 ends in 1492 DR.","Add an event with “New event”, or create a Codex entry of type Event with a year."],n(events,"event","events"))}
     ${card("canon","Canon","Where the team decides what is official.",
       ["New ideas start as <b>Proposal</b>. Each member votes Approve or Reject; only a unanimous vote makes it <b>Project canon</b> or <b>Discarded</b>.","<b>Official canon</b> means it comes from the games or D&amp;D books.","The contradictions register records each time we knowingly change official lore, and why.","Download a backup of the whole bible from the bottom of this page."],awaitingMyVote().length?n(awaitingMyVote().length,"awaits your vote","await your vote"):proposals?n(proposals,"open vote","open votes"):"Up to date")}
+    ${card("cast","Factions & characters","Create the factions and characters of our story and connect them.",
+      ["Guided creation: goal, means and base for factions; role, desire, fear and voice for characters.","Set leaders, members, allies and enemies.","“Use in a plot” puts a faction or character into an existing plot or starts a new one.","Each one is a Codex entry, voted on like any proposal."],`${factions().length} factions · ${characters().length} characters`)}
     ${card("plots","Plots & clocks","The stories in motion: threats that grow, faction projects, and subplots.",
       ["Each plot has a clock: a pie split into 4, 6 or 8 slices. Fill a slice with + when the plot makes progress, erase one with − after a setback.","When the clock is full, the plot succeeds and the world changes.","Tick the portents (warning signs) as they happen in the roleplay.","Between two chapters or sessions, use “Faction turn” to move every clock at once."],n(active.length,"active plot","active plots"))}
     ${card("map","Map","Your maps, with named and tagged places linked to the Codex.",
@@ -598,8 +611,9 @@ function bindView(){
   v.querySelectorAll("[data-newinvite]").forEach(b=>b.onclick=()=>newInvite(b.dataset.newinvite));
 }
 document.addEventListener("click",async e=>{
-  const t=e.target.closest("[data-vote],[data-gotopin],[data-open-entry],[data-open-plot],[data-tick],[data-setstatus],[data-delreg],[data-portent]");
+  const t=e.target.closest("[data-useplot],[data-vote],[data-gotopin],[data-open-entry],[data-open-plot],[data-tick],[data-setstatus],[data-delreg],[data-portent]");
   if(!t)return;
+  if(t.dataset.useplot){openDrawer({kind:"useplot",id:t.dataset.useplot});return}
   if(t.dataset.vote){castVote(t.dataset.vote,t.dataset.v);return}
   if(t.dataset.gotopin){gotoPin(t.dataset.gotopin);return}
   if(t.dataset.openEntry){if(S.entries.has(t.dataset.openEntry))openDrawer({kind:"entry",id:t.dataset.openEntry});}
@@ -629,6 +643,7 @@ function renderDrawer(){
   else if(k==="plot")d.innerHTML=S.mode==="edit"?plotForm():plotView();
   else if(k==="pin")d.innerHTML=S.mode==="edit"?pinForm():pinView();
   else if(k==="map")d.innerHTML=mapForm();
+  else if(k==="useplot")d.innerHTML=usePlotView();
   else d.innerHTML=turnForm();
   bindDrawer();
 }
@@ -638,7 +653,7 @@ function entryView(){
   const back=[...S.entries.values()].filter(x=>x.id!==e.id&&(x.links||[]).includes(e.id));
   const inPlots=[...S.plots.values()].filter(p=>(p.entries||[]).includes(e.id));
   const sec=(h,v,cls="")=>v?`<div class="sec"><h4>${h}</h4><p class="${cls}">${esc(v)}</p></div>`:"";
-  const fields=(TYPES[e.type]?.fields||[]).map(f=>sec(f,e.fields?.[f])).join("");
+  const fields=fieldList(e,e.type).map(f=>sec(f,e.fields?.[f])).join("")+relSection(e);
   const by=e.updatedBy&&e.updatedBy!=="setup"?e.updatedBy:"";
   return `<div class="dhead"><div><h2>${esc(e.name||"Untitled")}</h2>${e.nameFr?`<div class="fr">${esc(e.nameFr)}</div>`:""}</div>${closeBtn()}</div>
   <div class="chips"><span class="chip type">${esc(e.type)}</span>${e.module?`<span class="chip">${e.module}. ${esc(MODULES[e.module-1])}</span>`:""}${statusChip(e.status)}${e.type==="Event"&&(e.yearLabel||(e.year!=null&&e.year!==""))?`<span class="chip">${esc(yearText(e))}</span>`:""}</div>
@@ -668,7 +683,8 @@ function entryForm(){
     <label>What BG3 changed <span class="hint">How did the events of BG3 affect this?</span><textarea id="f_changed">${esc(e.changed)}</textarea></label>
     <label>Public part <span class="hint">What most people know</span><textarea id="f_public">${esc(e.public)}</textarea></label>
     <label>Secret part <span class="hint">What only the team knows</span><textarea id="f_secret">${esc(e.secret)}</textarea></label>
-    ${(TYPES[type].fields).map((f,i)=>`<label>${esc(f)}<textarea id="ff_${i}" style="min-height:48px">${esc(e.fields?.[f])}</textarea></label>`).join("")}
+    ${fieldList(e,type).map((f,i)=>`<label>${esc(f)}<textarea id="ff_${i}" style="min-height:48px">${esc(e.fields?.[f])}</textarea></label>`).join("")}
+    ${relPickers(e,type)}
     <label>Canon source <span class="hint">Game or book this comes from, if any</span><input type="text" id="f_source" value="${esc(e.source)}"></label>
     <div><div style="font-weight:500;font-size:.93rem">Linked entries</div>
       <div class="links" style="margin:6px 0">${(e.links||[]).map(id=>`<span class="chip">${esc(entryName(id))}<button type="button" class="btn ghost small" data-unlink="${id}" aria-label="Remove link">×</button></span>`).join("")||`<span class="note">No links yet.</span>`}</div>
@@ -684,7 +700,8 @@ function readEntryForm(){
   if(g("f_year")!==undefined)d.year=g("f_year")===""?null:+g("f_year");
   if(g("f_yearLabel")!==undefined)d.yearLabel=g("f_yearLabel").trim();
   if(g("f_tags")!==undefined)d.tags=g("f_tags").split(",").map(s=>s.trim()).filter(Boolean);
-  d.fields=d.fields||{};(TYPES[prevType]?.fields||[]).forEach((f,i)=>{const v=g("ff_"+i);if(v!==undefined)d.fields[f]=v});
+  d.fields=d.fields||{};fieldList(d,prevType).forEach((f,i)=>{const v=g("ff_"+i);if(v!==undefined)d.fields[f]=v});
+  if(g("f_leader")!==undefined)d.leader=g("f_leader");
   d.type=type;return {typeChanged:type!==prevType};
 }
 function plotView(){
@@ -718,7 +735,7 @@ function plotForm(){
     <label>If nobody stops it <span class="hint">The worst outcome</span><textarea id="p_grim" style="min-height:48px">${esc(p.grim)}</textarea></label>
     <div><div style="font-weight:500;font-size:.93rem">Entries involved</div>
       <div class="links" style="margin:6px 0">${(p.entries||[]).map(id=>`<span class="chip">${esc(entryName(id))}<button type="button" class="btn ghost small" data-unlink="${id}" aria-label="Remove link">×</button></span>`).join("")||`<span class="note">None yet.</span>`}</div>
-      ${others.length?`<div style="display:flex;gap:6px"><select id="f_linkpick" aria-label="Entry to link"><option value="">Choose an entry…</option>${others.map(x=>`<option value="${x.id}">${esc(x.name)} (${esc(x.type)})</option>`).join("")}</select><button type="button" class="btn" id="f_linkadd">Link</button></div>`:""}</div>
+      ${others.length?`<div style="display:flex;gap:6px"><select id="f_linkpick" aria-label="Entry to link"><option value="">Choose an entry…</option>${entryOptionGroups(others)}</select><button type="button" class="btn" id="f_linkadd">Link</button></div>`:""}</div>
     <div class="actions"><button class="btn primary" type="submit">Save</button><button class="btn" type="button" data-cancel>Cancel</button></div>
   </form>`;
 }
@@ -754,6 +771,9 @@ function bindDrawer(){
   d.querySelectorAll("[data-unlink]").forEach(b=>b.onclick=()=>{S.sel.kind==="entry"?readEntryForm():readPlotForm();const key=S.sel.kind==="entry"?"links":"entries";S.draft[key]=(S.draft[key]||[]).filter(x=>x!==b.dataset.unlink);renderDrawer()});
   const tf=d.querySelector("#turnForm");if(tf)tf.onsubmit=ev=>{ev.preventDefault();applyTurn(tf)};
   bindMapDrawer(d);
+  bindUsePlot(d);
+  d.querySelectorAll("[data-reladd]").forEach(b=>b.onclick=()=>{const key=b.dataset.reladd;const v=d.querySelector("#relpick_"+key).value;if(!v)return;readEntryForm();S.draft[key]=[...new Set([...(S.draft[key]||[]),v])];renderDrawer()});
+  d.querySelectorAll("[data-relrm]").forEach(b=>b.onclick=()=>{const key=b.dataset.relrm;readEntryForm();S.draft[key]=(S.draft[key]||[]).filter(x=>x!==b.dataset.id);renderDrawer()});
 }
 
 /* ---------- maps ---------- */
@@ -1011,6 +1031,118 @@ async function movePin(id,x,y){
 function pinsForEntry(id){return [...S.pins.values()].filter(p=>p.entryId===id&&S.maps.has(p.mapId))}
 function gotoPin(id){const p=S.pins.get(id);if(!p)return;S.mapId=p.mapId;S.focusPin=id;S.sel={kind:"pin",id};S.mode="view";
   renderDrawer();if(location.hash!=="#map")location.hash="#map";else renderView()}
+
+/* ---------- factions & characters ---------- */
+const REL_LABELS={allies:"Allies",enemies:"Enemies",memberOf:"Member of"};
+function fieldList(e,type){const t=(TYPES[type]||{fields:[]}).fields;return [...t,...Object.keys(e.fields||{}).filter(k=>!t.includes(k)&&String(e.fields[k]||"").trim())]}
+function factions(){return [...S.entries.values()].filter(e=>e.type==="Faction").sort(byName)}
+function characters(){return [...S.entries.values()].filter(e=>e.type==="NPC").sort(byName)}
+function membersOf(fid){return characters().filter(c=>(c.memberOf||[]).includes(fid))}
+function relIds(e,key){
+  const own=(e[key]||[]).filter(id=>S.entries.has(id));
+  if(key==="allies"||key==="enemies"){ // relations count both ways
+    const back=factions().filter(f=>f.id!==e.id&&(f[key]||[]).includes(e.id)).map(f=>f.id);
+    return [...new Set([...own,...back])];
+  }
+  return own;
+}
+function plotsOf(id){return [...S.plots.values()].filter(p=>(p.entries||[]).includes(id))}
+function chipsFor(ids){return ids.map(id=>`<button class="chip" data-open-entry="${id}">${esc(entryName(id))}</button>`).join("")}
+function plotChips(id){return plotsOf(id).map(p=>`<button class="chip" data-open-plot="${p.id}">${esc(p.name)} · ${p.clockFilled|0}/${p.clockSize|0}</button>`).join("")}
+function relSection(e){
+  if(e.type==="Faction"){
+    const leader=e.leader&&S.entries.has(e.leader)?e.leader:null;const mem=membersOf(e.id).map(c=>c.id);
+    const al=relIds(e,"allies"),en=relIds(e,"enemies");
+    if(!leader&&!mem.length&&!al.length&&!en.length)return "";
+    return `<div class="sec"><h4>Relationships</h4><dl class="rels">
+      ${leader?`<dt>Leader</dt><dd>${chipsFor([leader])}</dd>`:""}${mem.length?`<dt>Members</dt><dd>${chipsFor(mem)}</dd>`:""}
+      ${al.length?`<dt>Allies</dt><dd>${chipsFor(al)}</dd>`:""}${en.length?`<dt>Enemies</dt><dd>${chipsFor(en)}</dd>`:""}</dl></div>`;
+  }
+  if(e.type==="NPC"){
+    const mo=relIds(e,"memberOf");const leads=factions().filter(f=>f.leader===e.id).map(f=>f.id);
+    if(!mo.length&&!leads.length)return "";
+    return `<div class="sec"><h4>Relationships</h4><dl class="rels">${leads.length?`<dt>Leads</dt><dd>${chipsFor(leads)}</dd>`:""}${mo.length?`<dt>Member of</dt><dd>${chipsFor(mo)}</dd>`:""}</dl></div>`;
+  }
+  return "";
+}
+function relPickers(e,type){
+  const pick=(key,pool)=>{const cur=(e[key]||[]).filter(id=>S.entries.has(id));const left=pool.filter(x=>x.id!==e.id&&!cur.includes(x.id));
+    return `<div><div style="font-weight:500;font-size:.93rem">${REL_LABELS[key]}</div>
+      <div class="links" style="margin:6px 0">${cur.map(id=>`<span class="chip">${esc(entryName(id))}<button type="button" class="btn ghost small" data-relrm="${key}" data-id="${id}" aria-label="Remove">×</button></span>`).join("")||`<span class="note">None yet.</span>`}</div>
+      ${left.length?`<div style="display:flex;gap:6px"><select id="relpick_${key}" aria-label="Add to ${REL_LABELS[key]}"><option value="">Choose…</option>${left.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join("")}</select><button type="button" class="btn" data-reladd="${key}">Add</button></div>`:`<p class="note" style="margin:0">${pool.length?"":"Create some first."}</p>`}</div>`};
+  if(type==="Faction"){
+    const chars=characters();
+    return `<fieldset class="relset"><legend>Relationships</legend>
+      <label>Leader <span class="hint">A character from the Codex</span><select id="f_leader"><option value="">No leader chosen</option>${chars.map(c=>`<option value="${c.id}" ${e.leader===c.id?"selected":""}>${esc(c.name)}</option>`).join("")}</select></label>
+      ${pick("allies",factions())}${pick("enemies",factions())}
+      <p class="note" style="margin:0">Members are set on each character (“Member of”).</p></fieldset>`;
+  }
+  if(type==="NPC")return `<fieldset class="relset"><legend>Relationships</legend>${pick("memberOf",factions())}</fieldset>`;
+  return "";
+}
+function castCard(e){
+  const isF=e.type==="Faction";const f=e.fields||{};
+  const line=isF?(f.Goal||e.summary):(f.Role||e.summary);
+  const rel=isF?[(e.leader&&S.entries.has(e.leader))?`Led by ${esc(entryName(e.leader))}`:"",membersOf(e.id).length?`${membersOf(e.id).length} member${membersOf(e.id).length>1?"s":""}`:"",relIds(e,"allies").length?`${relIds(e,"allies").length} all${relIds(e,"allies").length>1?"ies":"y"}`:"",relIds(e,"enemies").length?`${relIds(e,"enemies").length} enem${relIds(e,"enemies").length>1?"ies":"y"}`:""].filter(Boolean).join(" · ")
+    :relIds(e,"memberOf").map(id=>esc(entryName(id))).join(", ");
+  const pc=plotChips(e.id);
+  return `<article class="hcard castcard">
+    <div class="hcard-top"><h3 style="font-size:1.15rem"><button class="linkbtn" data-open-entry="${e.id}">${esc(e.name)}</button></h3>${statusChip(e.status)}</div>
+    ${line?`<p>${isF?"<b>Goal:</b> ":"<b>Role:</b> "}${esc(line)}</p>`:`<p class="note">${isF?"No goal written yet.":"No role written yet."}</p>`}
+    ${rel?`<p class="note" style="margin:0">${isF?"":"<b>Member of:</b> "}${rel}</p>`:""}
+    <div><div class="note" style="margin-bottom:4px">${pc?"In plots:":"Not in any plot yet."}</div>${pc?`<div class="links">${pc}</div>`:""}</div>
+    ${S.canWrite?`<div class="actions" style="margin-top:4px"><button class="btn small primary" data-useplot="${e.id}">Use in a plot</button><button class="btn small" data-open-entry="${e.id}">Open</button></div>`:""}
+  </article>`;
+}
+function viewCast(){
+  const q=(S.castQ||"").toLowerCase(),mine=S.castMine;
+  const ok=e=>(!mine||e.status!=="Official canon")&&(!q||[e.name,e.summary,(e.fields||{}).Goal,(e.fields||{}).Role,(e.tags||[]).join(" ")].join(" ").toLowerCase().includes(q));
+  const fs=factions().filter(ok),cs=characters().filter(ok);
+  return `<h2 class="view">Factions &amp; characters</h2>
+  <p class="lede">Create the factions and characters of our story, connect them (leaders, members, allies, enemies), then put them to work in plots. Each one is also a Codex entry, so the team votes on it like any proposal.</p>
+  <div class="bar"><input type="search" id="castQ" placeholder="Search factions and characters" value="${esc(S.castQ||"")}" aria-label="Search factions and characters">
+    <label class="note" style="display:flex;gap:4px;align-items:center"><input type="checkbox" id="castMine" ${mine?"checked":""}> Only our creations</label>
+    ${S.canWrite?`<button class="btn primary" id="newFaction">New faction</button><button class="btn primary" id="newCharacter">New character</button>`:""}</div>
+  <h3 class="sub">Factions (${fs.length})</h3>
+  ${fs.length?`<div class="hgrid">${fs.map(castCard).join("")}</div>`:`<div class="empty">${mine?"No faction of our own yet. Click “New faction” to create one.":"No faction matches."}</div>`}
+  <h3 class="sub">Characters (${cs.length})</h3>
+  ${cs.length?`<div class="hgrid">${cs.map(castCard).join("")}</div>`:`<div class="empty">${mine?"No character of our own yet. Click “New character” to create one.":"No character matches."}</div>`}
+  <p class="help" style="margin-top:16px">Need a faction or character from the games? Find it in References and click “Add to Codex”.</p>`;
+}
+function bindCast(){
+  const v=$("#view");
+  const q=$("#castQ");if(q)q.oninput=e=>{S.castQ=e.target.value;const pos=e.target.selectionStart;renderView();const n=$("#castQ");n.focus();n.setSelectionRange(pos,pos)};
+  const m=$("#castMine");if(m)m.onchange=e=>{S.castMine=e.target.checked;try{localStorage.setItem("castMine",S.castMine?"1":"")}catch(_){}renderView()};
+  const nf=$("#newFaction");if(nf)nf.onclick=()=>newEntry("Faction");
+  const nc=$("#newCharacter");if(nc)nc.onclick=()=>newEntry("NPC");
+}
+try{S.castMine=localStorage.getItem("castMine")==="1"}catch(_){}
+function usePlotView(){
+  const e=S.entries.get(S.sel.id);if(!e)return `<div class="dhead"><h2>Entry removed</h2>${closeBtn()}</div>`;
+  const cur=plotsOf(e.id).map(p=>p.id);const avail=[...S.plots.values()].filter(p=>!cur.includes(p.id)).sort(byName);
+  return `<div class="dhead"><div><h2>Use in a plot</h2><div class="fr">${esc(e.name)}</div></div>${closeBtn()}</div>
+  <div class="form" style="margin-top:12px">
+    <div class="sec"><h4>Start a new plot</h4><p class="note" style="margin:0 0 6px">${e.type==="Faction"?"Usually a faction project (what this faction is working toward) or a front (if it's a growing threat).":"Usually a subplot built around this character."}</p>
+      <button class="btn primary" id="useNew">Create a new plot with ${esc(e.name)}</button></div>
+    <div class="sec"><h4>Add to an existing plot</h4>${avail.length?`<div style="display:flex;gap:6px"><select id="usePick" aria-label="Plot"><option value="">Choose a plot…</option>${avail.map(p=>`<option value="${p.id}">${esc(p.name)} (${esc(p.kind)})</option>`).join("")}</select><button class="btn" id="useAdd">Add</button></div>`:`<p class="note">${S.plots.size?"Already in every plot.":"No plots yet."}</p>`}</div>
+    ${cur.length?`<div class="sec"><h4>Already in</h4><div class="links">${plotChips(e.id)}</div></div>`:""}
+  </div>`;
+}
+async function addToPlot(entryId,plotId){
+  const p=S.plots.get(plotId);if(!p)return;const n=clean(p);n.entries=[...new Set([...(n.entries||[]),entryId])];
+  if(await write("plots/"+plotId,stamp(n),"Added to “"+p.name+"”")){S.plots.set(plotId,n);openDrawer({kind:"plot",id:plotId})}
+}
+function bindUsePlot(d){
+  const nb=d.querySelector("#useNew");
+  if(nb)nb.onclick=()=>{const e=S.entries.get(S.sel.id);if(!e)return;const isF=e.type==="Faction";
+    openDrawer({kind:"plot",id:null,draft:{id:uid(),name:"",kind:isF?"Faction project":"Subplot",state:"Active",origin:"New",clockSize:6,clockFilled:0,portents:[],entries:[e.id],history:[],goal:isF?((e.fields||{}).Goal||""):""}},"edit")};
+  const ab=d.querySelector("#useAdd");if(ab)ab.onclick=()=>{const v=d.querySelector("#usePick").value;if(v)addToPlot(S.sel.id,v)};
+}
+function entryOptionGroups(list){
+  const g={Factions:[],Characters:[],Places:[],Other:[]};
+  list.forEach(x=>(x.type==="Faction"?g.Factions:x.type==="NPC"?g.Characters:x.type==="Location"?g.Places:g.Other).push(x));
+  return Object.entries(g).filter(([,a])=>a.length).map(([k,a])=>`<optgroup label="${k}">${a.sort(byName).map(x=>`<option value="${x.id}">${esc(x.name)}${k==="Other"?` (${esc(x.type)})`:""}</option>`).join("")}</optgroup>`).join("");
+}
 
 /* ---------- votes ---------- */
 S.votes=new Map(); // entryId -> Map(voter -> "approve"|"reject")
