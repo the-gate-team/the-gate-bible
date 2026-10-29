@@ -133,6 +133,19 @@ body{margin:0}
 .login{max-width:420px;margin:12vh auto 0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:28px}
 .login h1{font-family:var(--f-display);margin:0 0 6px;font-size:1.9rem}
 .who{font-size:.85rem;color:var(--muted)}
+.hgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.hcard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.hcard-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.hcard h3{margin:0;font-family:var(--f-display);font-size:1.3rem}
+.hcard h3 a{color:var(--ink);text-decoration:none}
+.hcard h3 a:hover{color:var(--accent)}
+.hcard p{margin:0}
+.hcard ul{margin:0;padding-left:18px;color:var(--muted);font-size:.93rem;display:flex;flex-direction:column;gap:4px;flex:1}
+.hcard .btn{align-self:flex-start;text-decoration:none;color:var(--ink)}
+.attention{background:var(--accent-soft);border:1px solid var(--line);border-radius:var(--r);padding:12px 16px;margin-bottom:8px;max-width:720px}
+.attention ul{margin:4px 0 0;padding-left:18px}
+.attention a{color:var(--ink)}
+.steps{max-width:65ch;padding-left:22px;display:flex;flex-direction:column;gap:6px;margin:0}
 </style>
 </head>
 <body>
@@ -155,8 +168,9 @@ body{margin:0}
 
 <header>
   <div class="wrap top">
-    <h1 class="brand">The Gate Bible<small>SL ROLEPLAY · FROM 1492 DR</small></h1>
+    <h1 class="brand"><a href="#home" style="color:inherit;text-decoration:none">The Gate Bible<small>SL ROLEPLAY · FROM 1492 DR</small></a></h1>
     <nav class="tabs" aria-label="Views">
+      <a href="#home" data-view="home">Home</a>
       <a href="#codex" data-view="codex">Codex</a>
       <a href="#plots" data-view="plots">Plots &amp; clocks</a>
       <a href="#timeline" data-view="timeline">Timeline</a>
@@ -226,7 +240,7 @@ function clockSVG(filled,size,px=56){
 }
 
 /* ---------- routing ---------- */
-function route(){const h=location.hash.replace("#","");S.view=["codex","plots","timeline","canon","team"].includes(h)?h:"codex";
+function route(){const h=location.hash.replace("#","");S.view=["home","codex","plots","timeline","canon","team"].includes(h)?h:"home";
   document.querySelectorAll("nav.tabs a").forEach(a=>{if(a.dataset.view===S.view)a.setAttribute("aria-current","page");else a.removeAttribute("aria-current")});
   renderView();}
 window.addEventListener("hashchange",route);
@@ -234,7 +248,8 @@ window.addEventListener("hashchange",route);
 /* ---------- views ---------- */
 function renderView(){
   const v=$("#view");
-  if(S.view==="codex")v.innerHTML=viewCodex();
+  if(S.view==="home")v.innerHTML=viewHome();
+  else if(S.view==="codex")v.innerHTML=viewCodex();
   else if(S.view==="plots")v.innerHTML=viewPlots();
   else if(S.view==="timeline")v.innerHTML=viewTimeline();
   else if(S.view==="team")v.innerHTML=viewTeam();
@@ -320,6 +335,43 @@ function viewCanon(){
   <button class="btn" id="exportBtn">Download backup</button>`;
 }
 
+function viewHome(){
+  const all=[...S.entries.values()],plots=[...S.plots.values()];
+  const proposals=all.filter(e=>e.status==="Proposal").length;
+  const events=all.filter(e=>e.type==="Event").length;
+  const active=plots.filter(p=>(p.state||"Active")==="Active");
+  const close=active.filter(p=>(p.clockSize|0)-(p.clockFilled|0)<=1).sort(byName);
+  const joined=[...S.members.values()].filter(m=>m.user_id).length;
+  const n=(x,one,many)=>`${x} ${x===1?one:many}`;
+  const card=(view,title,what,does,stat)=>`<article class="hcard"><div class="hcard-top"><h3><a href="#${view}">${title}</a></h3><span class="chip">${stat}</span></div>
+    <p>${what}</p><ul>${does.map(d=>`<li>${d}</li>`).join("")}</ul><a class="btn" href="#${view}">Open ${title}</a></article>`;
+  return `<h2 class="view">Welcome to The Gate Bible</h2>
+  <p class="lede">This is the team's shared memory for our roleplay, set in the Forgotten Realms after Baldur's Gate 3 (1492 DR). Everything we decide about the world goes here, so every player and writer stays consistent. Changes appear for everyone instantly.</p>
+  ${S.loaded.entries&&(proposals||close.length)?`<div class="attention"><b>Needs attention</b><ul>
+    ${proposals?`<li><a href="#canon">${n(proposals,"proposal is","proposals are")} waiting for review</a> in Canon.</li>`:""}
+    ${close.map(p=>`<li><a href="#plots" data-open-plot="${p.id}">${esc(p.name)}</a> is at ${p.clockFilled|0} / ${p.clockSize|0}: ${(p.clockFilled|0)>=(p.clockSize|0)?"its clock is full.":"one more slice and it happens."}</li>`).join("")}
+  </ul></div>`:""}
+  <h3 class="sub">The sections</h3>
+  <div class="hgrid">
+    ${card("codex","Codex","The encyclopedia of the world. One entry per place, faction, character, god, event, item, people, or loose idea.",
+      ["Search and filter by type, module or canon status.","Open an entry to read it, edit it, or follow its links to related entries.","Each entry has a public part (what everyone knows) and a secret part (what only the team knows).","Use type “Idea” for anything not yet sorted."],n(all.length,"entry","entries"))}
+    ${card("plots","Plots & clocks","The stories in motion: threats that grow, faction projects, and subplots.",
+      ["Each plot has a clock: a pie split into 4, 6 or 8 slices. Fill a slice with + when the plot makes progress, erase one with − after a setback.","When the clock is full, the plot succeeds and the world changes.","Tick the portents (warning signs) as they happen in the roleplay.","Between two chapters or sessions, use “Faction turn” to move every clock at once."],n(active.length,"active plot","active plots"))}
+    ${card("timeline","Timeline","Every Event from the Codex, in year order, so the team agrees on what happened when.",
+      ["Years are in DR (Dalereckoning). BG3 ends in 1492 DR.","Add an event with “New event”, or create a Codex entry of type Event with a year."],n(events,"event","events"))}
+    ${card("canon","Canon","Where the team decides what is official.",
+      ["New ideas start as <b>Proposal</b>. Approve them to make them <b>Project canon</b>, or discard them.","<b>Official canon</b> means it comes from the games or D&amp;D books.","The contradictions register records each time we knowingly change official lore, and why.","Download a backup of the whole bible from the bottom of this page."],proposals?n(proposals,"to review","to review"):"Up to date")}
+    ${card("team","Team","Who can open the bible.",
+      ["Add a colleague's email, then send them the address and the invite code shown next to their name.","The first time, they click “Create your password” and enter the code.","Forgot a password? Remove the person and add them again for a new code."],n(joined,"member","members"))}
+  </div>
+  <h3 class="sub">Getting started</h3>
+  <ol class="steps">
+    <li><b>Read the Codex</b> to see what is already decided about the world.</li>
+    <li><b>Add your ideas</b> as new entries. They start as Proposals.</li>
+    <li><b>Review your teammates' proposals</b> in Canon and approve the ones you agree on.</li>
+    <li><b>Track the stories</b> in Plots &amp; clocks, and run a faction turn after each roleplay session.</li>
+  </ol>`;
+}
 function viewTeam(){
   const ms=[...S.members.values()].sort((a,b)=>a.email.localeCompare(b.email));
   return `<h2 class="view">Team</h2><p class="lede">Only the people listed here can read and edit the bible. To invite a colleague: add their email, then send them the app's address and the invite code shown next to their name. The first time, they click “Create your password”, choose a password and enter the code.</p>
