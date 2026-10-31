@@ -211,6 +211,12 @@ body{margin:0}
 .sessions li{border-left:3px solid var(--accent);padding:2px 0 2px 10px}
 .sessform{background:var(--sunk);border-radius:var(--r);padding:10px;margin-top:6px}
 .mmq{font:600 12px var(--f-body);fill:var(--ink)}
+.subtabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:4px 0 14px;flex-wrap:wrap}
+.subtabs a{padding:8px 14px;text-decoration:none;color:var(--muted);font-weight:500;border-bottom:3px solid transparent;margin-bottom:-1px;display:flex;gap:6px;align-items:center}
+.subtabs a:hover{color:var(--ink)}
+.subtabs a[aria-current="page"]{color:var(--ink);border-bottom-color:var(--accent)}
+.subtabs .count{font-family:var(--f-mono);font-size:.75rem;background:var(--sunk);border-radius:999px;padding:0 7px}
+.subtabs .count.alert{background:var(--accent-soft);color:var(--ink)}
 .maplegend{display:flex;gap:14px;flex-wrap:wrap;font-size:.85rem;color:var(--muted);margin-top:8px}
 .maplegend i,.dotsm{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:middle}
 .lore{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:16px;max-width:820px}
@@ -249,8 +255,7 @@ body{margin:0}
       <a href="#timeline" data-view="timeline">Timeline</a>
       <a href="#canon" data-view="canon">Canon</a>
       <a href="#cast" data-view="cast">Factions &amp; characters</a>
-      <a href="#plots" data-view="plots">Plots &amp; clocks</a>
-      <a href="#quests" data-view="quests">Quests</a>
+      <a href="#plots" data-view="plots">Plots &amp; quests</a>
       <a href="#map" data-view="map">Map</a>
       <a href="#references" data-view="references">References</a>
       <a href="#team" data-view="team">Team</a>
@@ -319,7 +324,7 @@ function clockSVG(filled,size,px=56){
 
 /* ---------- routing ---------- */
 function route(){const h=location.hash.replace("#","");S.view=["home","codex","plots","quests","timeline","map","canon","cast","references","team"].includes(h)?h:"home";
-  document.querySelectorAll("nav.tabs a").forEach(a=>{if(a.dataset.view===S.view)a.setAttribute("aria-current","page");else a.removeAttribute("aria-current")});
+  const navView=S.view==="quests"?"plots":S.view;document.querySelectorAll("nav.tabs a").forEach(a=>{if(a.dataset.view===navView)a.setAttribute("aria-current","page");else a.removeAttribute("aria-current")});
   renderView();}
 window.addEventListener("hashchange",route);
 
@@ -374,7 +379,7 @@ function viewPlots(){
   else if(S.plotMode==="mind")body=viewMindMap();
   else body=plots.length?`<div class="grid">`+plots.map(plotCard).join("")+`</div>`:`<div class="empty">No plot matches these filters.</div>`;
   const origins=[...new Set([...S.plots.values()].map(p=>p.origin||"New"))].sort();
-  return `<h2 class="view">Plots &amp; clocks</h2><p class="lede">Each plot has a clock: a progress bar split into 4, 6 or 8 slices. When it fills, the plot succeeds and the world changes.</p>
+  return `<h2 class="view">Plots &amp; quests</h2>${plotsSubnav()}<p class="lede">Each plot has a clock: a progress bar split into 4, 6 or 8 slices. When it fills, the plot succeeds and the world changes.</p>
   <details class="explain" ${S.plotHelpClosed?"":"open"} id="plotHelp"><summary>How plots work</summary>
     <div class="explain-grid">
       <div><h4>Front</h4><p>A <b>threat that grows</b> if nobody stops it: a monster, a curse, an invasion, a cult. It has <b>portents</b>, warning signs that come true one by one, and a <b>worst outcome</b> if the clock fills.</p><p class="note">Example: Cazador's freed spawn organize in the Underdark. Portents: disappearances at the docks, a district goes silent… Worst outcome: a vampire court raids the city.</p></div>
@@ -465,7 +470,7 @@ function viewHome(){
       ["New ideas start as <b>Proposal</b>. Each member votes Approve or Reject; only a unanimous vote makes it <b>Project canon</b> or <b>Discarded</b>.","<b>Official canon</b> means it comes from the games or D&amp;D books.","The contradictions register records each time we knowingly change official lore, and why.","Download a backup of the whole bible from the bottom of this page."],awaitingMyVote().length?n(awaitingMyVote().length,"awaits your vote","await your vote"):proposals?n(proposals,"open vote","open votes"):"Up to date")}
     ${card("cast","Factions & characters","Create the factions and characters of our story and connect them.",
       ["Guided creation: goal, means and base for factions; role, desire, fear and voice for characters.","Set leaders, members, allies and enemies.","“Use in a plot” puts a faction or character into an existing plot or starts a new one.","Each one is a Codex entry, voted on like any proposal."],`${factions().length} factions · ${characters().length} characters`)}
-    ${card("plots","Plots & clocks","The stories in motion: threats that grow, faction projects, and subplots.",
+    ${card("plots","Plots & quests","The stories in motion: threats that grow, faction projects, and subplots.",
       ["Each plot has a clock: a pie split into 4, 6 or 8 slices. Fill a slice with + when the plot makes progress, erase one with − after a setback.","When the clock is full, the plot succeeds and the world changes.","Tick the portents (warning signs) as they happen in the roleplay.","Between two chapters or sessions, use “Faction turn” to move every clock at once.","Switch to the mind map to see how plots connect to each other and to the factions and characters involved."],n(active.length,"active plot","active plots"))}
     ${card("quests","Quests","What players actually do in a session, each tied to a plot.",
       ["New quests are voted on like proposals: all three of you must approve.","A board shows quests by status: Planned, Open to players, In progress, Done.","Track the hook, quest giver, location, objectives, stakes and reward.","Log each session with its storyteller and players; a quest's outcome moves its plot's clock."],`${[...S.quests.values()].filter(q=>["Open","In progress"].includes(qStatus(q))).length} open · ${S.quests.size} total`)}
@@ -479,7 +484,7 @@ function viewHome(){
     <li><b>Read the Codex</b> to see what is already decided about the world.</li>
     <li><b>Add your ideas</b> as new entries. They start as Proposals.</li>
     <li><b>Review your teammates' proposals</b> in Canon and approve the ones you agree on.</li>
-    <li><b>Track the stories</b> in Plots &amp; clocks, and run a faction turn after each roleplay session.</li>
+    <li><b>Track the stories</b> in Plots &amp; quests, and run a faction turn after each roleplay session.</li>
   </ol>`;
 }
 /* ---------- references (static, from the games) ---------- */
@@ -1360,6 +1365,8 @@ function qApproval(q){return q.approval||"Proposal"}
 function qStatus(q){return q.status||"Planned"}
 function qStatusChip(q){return `<span class="chip status ${QCLASS[qStatus(q)]||""}">${esc(qStatus(q))}</span>`}
 function qApprovalChip(q){const a=qApproval(q);return a==="Proposal"?`<span class="chip status s-proposal">Awaiting the team's vote</span>`:a==="Discarded"?`<span class="chip status s-discarded">Rejected by vote</span>`:""}
+function plotsSubnav(){const w=questsAwaitingMyVote().length;
+  return `<nav class="subtabs" aria-label="Plots and quests"><a href="#plots" ${S.view==="plots"?'aria-current="page"':""}>Plots <span class="count">${S.plots.size}</span></a><a href="#quests" ${S.view==="quests"?'aria-current="page"':""}>Quests <span class="count">${S.quests.size}</span>${w?`<span class="count alert" title="${w} waiting for your vote">${w} to vote</span>`:""}</a></nav>`}
 function questsOfPlot(pid){return [...S.quests.values()].filter(q=>q.plotId===pid||(q.alsoPlots||[]).includes(pid)).sort(byName)}
 function questsOfEntry(eid){return [...S.quests.values()].filter(q=>q.giver===eid||q.location===eid||(q.entries||[]).includes(eid)).sort(byName)}
 function questsAwaitingMyVote(){return [...S.quests.values()].filter(q=>qApproval(q)==="Proposal"&&!myVote(q.id,"quest"))}
@@ -1384,7 +1391,7 @@ function viewQuests(){
     &&(!q||[x.name,x.pitch,x.hook,plotName(x.plotId)].join(" ").toLowerCase().includes(q))).sort(byName);
   const plots=[...S.plots.values()].sort(byName);
   const waiting=questsAwaitingMyVote().length;
-  return `<h2 class="view">Quests</h2>
+  return `<h2 class="view">Plots &amp; quests</h2>${plotsSubnav()}
   <p class="lede">Quests are what players actually do in a session. Each belongs to a plot, and its outcome moves that plot's clock. New quests are proposals: all three of you must approve one before it can open.</p>
   ${S.canWrite&&waiting?`<div class="attention"><b>${waiting} quest${waiting>1?"s":""} waiting for your vote.</b> Open ${waiting>1?"them":"it"} below (column “Planned”) or in Canon.</div>`:""}
   <div class="bar"><input type="search" id="qQ" placeholder="Search quests" value="${esc(S.qQ||"")}" aria-label="Search quests">
