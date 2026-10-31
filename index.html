@@ -198,6 +198,19 @@ body{margin:0}
 .mmlabel{font:12px var(--f-body);fill:var(--ink);paint-order:stroke;stroke:var(--surface);stroke-width:4px;stroke-linejoin:round}
 .mmrel{font:italic 12px var(--f-body);fill:var(--accent);paint-order:stroke;stroke:var(--surface);stroke-width:5px;stroke-linejoin:round}
 .seg2{display:inline-flex;gap:2px}
+.s-failed{color:var(--danger)}
+.qboard{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;align-items:start}
+.qcol{background:var(--sunk);border-radius:var(--r);padding:10px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.qcol h3{margin:0 0 2px;font-family:var(--f-display);font-size:1.1rem}
+.qcard{display:flex;flex-direction:column;gap:5px;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;cursor:pointer;min-width:0;width:100%}
+.qcard:hover{border-color:var(--accent)}
+.qname{font-weight:700}
+.qpitch{font-size:.93rem;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.outcome{background:var(--accent-soft);border:1px solid var(--accent);border-radius:var(--r);padding:10px 12px;margin:10px 0;display:flex;flex-direction:column;gap:4px}
+.sessions{list-style:none;margin:0 0 8px;padding:0;display:flex;flex-direction:column;gap:8px}
+.sessions li{border-left:3px solid var(--accent);padding:2px 0 2px 10px}
+.sessform{background:var(--sunk);border-radius:var(--r);padding:10px;margin-top:6px}
+.mmq{font:600 12px var(--f-body);fill:var(--ink)}
 .maplegend{display:flex;gap:14px;flex-wrap:wrap;font-size:.85rem;color:var(--muted);margin-top:8px}
 .maplegend i,.dotsm{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:middle}
 .lore{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:16px;max-width:820px}
@@ -237,6 +250,7 @@ body{margin:0}
       <a href="#canon" data-view="canon">Canon</a>
       <a href="#cast" data-view="cast">Factions &amp; characters</a>
       <a href="#plots" data-view="plots">Plots &amp; clocks</a>
+      <a href="#quests" data-view="quests">Quests</a>
       <a href="#map" data-view="map">Map</a>
       <a href="#references" data-view="references">References</a>
       <a href="#team" data-view="team">Team</a>
@@ -280,7 +294,7 @@ const PLOT_STATES = ["Active","Idea","Resolved"];
 const ORIGINS = ["New","BG1","BG2","Throne of Bhaal","BG3"];
 const DEFAULT_MODULE = {Location:4,Faction:6,NPC:9,Deity:2,Event:3,Item:7,People:5,Idea:11};
 
-const S = {entries:new Map(), plots:new Map(), register:new Map(), members:new Map(), maps:new Map(), pins:new Map(), loaded:{entries:false,plots:false,register:false},
+const S = {entries:new Map(), plots:new Map(), register:new Map(), members:new Map(), maps:new Map(), pins:new Map(), quests:new Map(), loaded:{entries:false,plots:false,register:false},
   view:"codex", q:"", fType:"", fStatus:"", fModule:"", pKind:"", sel:null, mode:"view", draft:null, confirmDel:false,
   db:null, user:null, me:null, canWrite:true, names:{}, downloads:null};
 
@@ -304,7 +318,7 @@ function clockSVG(filled,size,px=56){
 }
 
 /* ---------- routing ---------- */
-function route(){const h=location.hash.replace("#","");S.view=["home","codex","plots","timeline","map","canon","cast","references","team"].includes(h)?h:"home";
+function route(){const h=location.hash.replace("#","");S.view=["home","codex","plots","quests","timeline","map","canon","cast","references","team"].includes(h)?h:"home";
   document.querySelectorAll("nav.tabs a").forEach(a=>{if(a.dataset.view===S.view)a.setAttribute("aria-current","page");else a.removeAttribute("aria-current")});
   renderView();}
 window.addEventListener("hashchange",route);
@@ -320,11 +334,13 @@ function renderView(){
   else if(S.view==="references")v.innerHTML=viewReferences();
   else if(S.view==="map")v.innerHTML=viewMap();
   else if(S.view==="cast")v.innerHTML=viewCast();
+  else if(S.view==="quests")v.innerHTML=viewQuests();
   else v.innerHTML=viewCanon();
   bindView();
   if(S.view==="map")bindMap();
   if(S.view==="cast")bindCast();
   if(S.view==="plots"&&S.plotMode==="mind")bindMindMap();
+  if(S.view==="quests")bindQuests();
 }
 function filteredEntries(){
   const q=S.q.trim().toLowerCase();
@@ -371,7 +387,7 @@ function viewPlots(){
   <select id="pState" aria-label="Filter by state"><option value="open" ${S.pState==="open"?"selected":""}>Active and ideas</option><option value="resolved" ${S.pState==="resolved"?"selected":""}>Resolved</option><option value="all" ${S.pState==="all"?"selected":""}>All plots</option></select>
   <select id="pKind" aria-label="Filter by kind"><option value="">All kinds</option>${PLOT_KINDS.map(k=>`<option ${S.pKind===k?"selected":""}>${k}</option>`).join("")}</select>
   <select id="pOrigin" aria-label="Filter by origin"><option value="">All origins</option>${origins.map(o=>`<option ${S.pOrigin===o?"selected":""}>${esc(o)}</option>`).join("")}</select>
-  ${S.plotMode==="mind"?`<label class="note" style="display:flex;gap:4px;align-items:center"><input type="checkbox" id="mmEntries" ${S.mmEntries?"checked":""}> Factions, characters &amp; places</label>`:""}
+  ${S.plotMode==="mind"?`<label class="note" style="display:flex;gap:4px;align-items:center"><input type="checkbox" id="mmEntries" ${S.mmEntries?"checked":""}> Factions, characters &amp; places</label><label class="note" style="display:flex;gap:4px;align-items:center"><input type="checkbox" id="mmQuests" ${S.mmQuests?"checked":""}> Quests</label>`:""}
   ${S.canWrite?`<button class="btn" id="factionTurn" title="Between chapters: move every active plot's clock at once">Faction turn</button><button class="btn primary" id="newPlot">New plot</button>`:""}</div>${body}`;
 }
 function plotCard(p){
@@ -406,6 +422,9 @@ function viewCanon(){
   ${!props.length?`<div class="empty">No proposals waiting.</div>`:`<div class="list">${props.map(e=>`<div class="row" style="cursor:default"><button class="btn ghost" style="padding:0;text-align:left;font-weight:700" data-open-entry="${e.id}">${esc(e.name)}</button>
     <span class="meta"><span class="chip type">${esc(e.type)}</span></span>
     ${e.summary?`<span class="sum">${esc(e.summary)}</span>`:""}<div style="grid-column:1/-1">${voteBox(e,true)}</div></div>`).join("")}</div>`}
+  <h3 class="sub">Quests to vote on</h3>
+  ${(()=>{const qs=[...S.quests.values()].filter(q=>qApproval(q)==="Proposal").sort(byName);return qs.length?`<div class="list">${qs.map(q=>`<div class="row" style="cursor:default"><button class="btn ghost" style="padding:0;text-align:left;font-weight:700" data-open-quest="${q.id}">${esc(q.name)}</button>
+    <span class="meta">${q.plotId?`<span class="chip">${esc(plotName(q.plotId))}</span>`:""}</span>${q.pitch?`<span class="sum">${esc(q.pitch)}</span>`:""}<div style="grid-column:1/-1">${voteBox(q,true,"quest")}</div></div>`).join("")}</div>`:`<div class="empty">No quests waiting.</div>`})()}
   <h3 class="sub">Contradictions register</h3>
   <p class="help">Every time the team deliberately changes or fills in official Forgotten Realms canon, write it here: what changed, what canon says, and why.</p>
   ${reg.length?`<div class="tablewrap"><table><thead><tr><th>Date</th><th>What we changed</th><th>Official canon says</th><th>Why</th><th>Decided by</th>${S.canWrite?"<th></th>":""}</tr></thead><tbody>
@@ -431,8 +450,9 @@ function viewHome(){
     <p>${what}</p><ul>${does.map(d=>`<li>${d}</li>`).join("")}</ul><a class="btn" href="#${view}">Open ${title}</a></article>`;
   return `<h2 class="view">Welcome to The Gate Bible</h2>
   <p class="lede">This is the team's shared memory for our roleplay, set in the Forgotten Realms years after the events of Baldur's Gate 3 (1492 DR), whose heroes are now only anecdotes. Everything we decide about the world goes here, so every player and writer stays consistent. Changes appear for everyone instantly.</p>
-  ${S.loaded.entries&&(awaitingMyVote().length||close.length)?`<div class="attention"><b>Needs attention</b><ul>
+  ${S.loaded.entries&&(awaitingMyVote().length||questsAwaitingMyVote().length||close.length)?`<div class="attention"><b>Needs attention</b><ul>
     ${awaitingMyVote().length?`<li><a href="#canon">${n(awaitingMyVote().length,"proposal is","proposals are")} waiting for your vote</a> in Canon.</li>`:""}
+    ${questsAwaitingMyVote().length?`<li><a href="#quests">${n(questsAwaitingMyVote().length,"quest is","quests are")} waiting for your vote</a>.</li>`:""}
     ${close.map(p=>`<li><a href="#plots" data-open-plot="${p.id}">${esc(p.name)}</a> is at ${p.clockFilled|0} / ${p.clockSize|0}: ${(p.clockFilled|0)>=(p.clockSize|0)?"its clock is full.":"one more slice and it happens."}</li>`).join("")}
   </ul></div>`:""}
   <h3 class="sub">The sections</h3>
@@ -447,6 +467,8 @@ function viewHome(){
       ["Guided creation: goal, means and base for factions; role, desire, fear and voice for characters.","Set leaders, members, allies and enemies.","“Use in a plot” puts a faction or character into an existing plot or starts a new one.","Each one is a Codex entry, voted on like any proposal."],`${factions().length} factions · ${characters().length} characters`)}
     ${card("plots","Plots & clocks","The stories in motion: threats that grow, faction projects, and subplots.",
       ["Each plot has a clock: a pie split into 4, 6 or 8 slices. Fill a slice with + when the plot makes progress, erase one with − after a setback.","When the clock is full, the plot succeeds and the world changes.","Tick the portents (warning signs) as they happen in the roleplay.","Between two chapters or sessions, use “Faction turn” to move every clock at once.","Switch to the mind map to see how plots connect to each other and to the factions and characters involved."],n(active.length,"active plot","active plots"))}
+    ${card("quests","Quests","What players actually do in a session, each tied to a plot.",
+      ["New quests are voted on like proposals: all three of you must approve.","A board shows quests by status: Planned, Open to players, In progress, Done.","Track the hook, quest giver, location, objectives, stakes and reward.","Log each session with its storyteller and players; a quest's outcome moves its plot's clock."],`${[...S.quests.values()].filter(q=>["Open","In progress"].includes(qStatus(q))).length} open · ${S.quests.size} total`)}
     ${card("map","Map","Your maps, with named and tagged places linked to the Codex.",
       ["Upload your own map images, even without any names on them.","Click “Add a place”, click on the map, then name it, tag it, and add it to the Codex in the same step.","Find places by name, tag or type; hide the names when the map gets crowded.","Click a place to read its entry; from an entry, “On the map” takes you to it."],n(S.maps.size,"map","maps"))}
     ${card("references","References","Background from the games, to check facts quickly.",
@@ -616,6 +638,7 @@ function bindView(){
   on("#pState","change",e=>{S.pState=e.target.value;S.mmView=null;S.mmFocus=null;renderView()});
   on("#pOrigin","change",e=>{S.pOrigin=e.target.value;S.mmView=null;S.mmFocus=null;renderView()});
   on("#mmEntries","change",e=>{S.mmEntries=e.target.checked;S.mmView=null;renderView()});
+  on("#mmQuests","change",e=>{S.mmQuests=e.target.checked;S.mmView=null;renderView()});
   v.querySelectorAll("[data-plotmode]").forEach(b=>b.onclick=()=>{S.plotMode=b.dataset.plotmode;try{localStorage.setItem("plotMode",S.plotMode)}catch(_){}renderView()});
   const ph=v.querySelector("#plotHelp");if(ph)ph.addEventListener("toggle",()=>{S.plotHelpClosed=!ph.open;try{localStorage.setItem("plotHelpClosed",S.plotHelpClosed?"1":"")}catch(_){}});
   on("#newEntry","click",()=>newEntry());
@@ -633,10 +656,12 @@ function bindView(){
   v.querySelectorAll("[data-newinvite]").forEach(b=>b.onclick=()=>newInvite(b.dataset.newinvite));
 }
 document.addEventListener("click",async e=>{
-  const t=e.target.closest("[data-useplot],[data-vote],[data-gotopin],[data-open-entry],[data-open-plot],[data-tick],[data-setstatus],[data-delreg],[data-portent]");
+  const t=e.target.closest("[data-open-quest],[data-newquest],[data-useplot],[data-vote],[data-gotopin],[data-open-entry],[data-open-plot],[data-tick],[data-setstatus],[data-delreg],[data-portent]");
   if(!t)return;
+  if(t.dataset.openQuest){S.qSessionForm=false;openDrawer({kind:"quest",id:t.dataset.openQuest});return}
+  if(t.dataset.newquest){newQuest(t.dataset.newquest);return}
   if(t.dataset.useplot){openDrawer({kind:"useplot",id:t.dataset.useplot});return}
-  if(t.dataset.vote){castVote(t.dataset.vote,t.dataset.v);return}
+  if(t.dataset.vote){castVote(t.dataset.vote,t.dataset.v,t.dataset.voteKind||"entry");return}
   if(t.dataset.gotopin){gotoPin(t.dataset.gotopin);return}
   if(t.dataset.openEntry){if(S.entries.has(t.dataset.openEntry))openDrawer({kind:"entry",id:t.dataset.openEntry});}
   else if(t.dataset.openPlot)openDrawer({kind:"plot",id:t.dataset.openPlot});
@@ -653,6 +678,7 @@ function openDrawer(sel,mode="view"){S.sel=sel;S.mode=mode;S.confirmDel=false;
   if(mode==="edit"&&sel.kind==="entry")S.draft=structuredClone(S.entries.get(sel.id)||sel.draft);
   if(mode==="edit"&&sel.kind==="plot")S.draft=structuredClone(S.plots.get(sel.id)||sel.draft);
   if(mode==="edit"&&sel.kind==="pin")S.draft=structuredClone(S.pins.get(sel.id)||sel.draft);
+  if(mode==="edit"&&sel.kind==="quest")S.draft=structuredClone(S.quests.get(sel.id)||sel.draft);
   if(mode==="edit"&&sel.kind==="map")S.draft=structuredClone(S.maps.get(sel.id)||sel.draft);
   renderDrawer();renderView();}
 function closeDrawer(){S.sel=null;S.draft=null;renderDrawer();renderView()}
@@ -666,6 +692,7 @@ function renderDrawer(){
   else if(k==="pin")d.innerHTML=S.mode==="edit"?pinForm():pinView();
   else if(k==="map")d.innerHTML=mapForm();
   else if(k==="useplot")d.innerHTML=usePlotView();
+  else if(k==="quest")d.innerHTML=S.mode==="edit"?questForm():questView();
   else d.innerHTML=turnForm();
   bindDrawer();
 }
@@ -684,6 +711,7 @@ function entryView(){
   ${(e.tags||[]).length?`<div class="sec"><h4>Tags</h4><div class="links">${e.tags.map(t=>`<span class="chip">${esc(t)}</span>`).join("")}</div></div>`:""}
   <div class="sec"><h4>Linked entries</h4>${(e.links||[]).length?`<div class="links">${e.links.map(id=>`<button class="chip" data-open-entry="${id}">${esc(entryName(id))}</button>`).join("")}</div>`:`<p class="note">None yet.</p>`}</div>
   ${back.length?`<div class="sec"><h4>Mentioned by</h4><div class="links">${back.sort(byName).map(x=>`<button class="chip" data-open-entry="${x.id}">${esc(x.name)}</button>`).join("")}</div></div>`:""}
+  ${questSection(questsOfEntry(e.id),"Quests",null)}
   ${pinsForEntry(e.id).length?`<div class="sec"><h4>On the map</h4><div class="links">${pinsForEntry(e.id).map(p=>`<button class="chip" data-gotopin="${p.id}">${esc((S.maps.get(p.mapId)||{}).name||"Map")}</button>`).join("")}</div></div>`:""}
   ${inPlots.length?`<div class="sec"><h4>Involved in plots</h4><div class="links">${inPlots.map(p=>`<button class="chip" data-open-plot="${p.id}">${esc(p.name)} · ${p.clockFilled|0}/${p.clockSize|0}</button>`).join("")}</div></div>`:""}
   ${S.canWrite?`<div class="actions"><button class="btn primary" data-edit>Edit</button><button class="btn danger" data-del>${S.confirmDel?"Click again to delete":"Delete"}</button></div>`:""}
@@ -737,6 +765,7 @@ function plotView(){
   ${(p.portents||[]).length?`<div class="sec"><h4>Portents (warning signs, in order)</h4><ul class="portents">${p.portents.map((x,i)=>`<li class="${x.done?"done":""}"><input type="checkbox" ${x.done?"checked":""} ${S.canWrite?"":"disabled"} data-portent="${p.id}" data-i="${i}" aria-label="Portent ${i+1} has happened"><span>${esc(x.text)}</span></li>`).join("")}</ul></div>`:""}
   ${sec("If nobody stops it",p.grim)}
   ${relatedSection(p)}
+  ${questSection(questsOfPlot(p.id),"Quests",p.id)}
   <div class="sec"><h4>Entries involved</h4>${(p.entries||[]).length?`<div class="links">${p.entries.map(id=>`<button class="chip" data-open-entry="${id}">${esc(entryName(id))}</button>`).join("")}</div>`:`<p class="note">None linked yet.</p>`}</div>
   ${hist.length?`<div class="sec"><h4>Clock history</h4><ul class="portents">${hist.map(h=>`<li><span class="clocktxt" style="font-size:.85rem">${h.from}→${h.to}</span><span>${esc(h.note||"")} <span class="note">${new Date(h.at).toLocaleDateString()}</span></span></li>`).join("")}</ul></div>`:""}
   ${S.canWrite?`<div class="actions"><button class="btn primary" data-edit>Edit</button><button class="btn danger" data-del>${S.confirmDel?"Click again to delete":"Delete"}</button></div>`:""}`;
@@ -797,6 +826,7 @@ function bindDrawer(){
   bindMapDrawer(d);
   bindUsePlot(d);
   bindRelatedPicker(d);
+  bindQuestDrawer(d);
   d.querySelectorAll("[data-reladd]").forEach(b=>b.onclick=()=>{const key=b.dataset.reladd;const v=d.querySelector("#relpick_"+key).value;if(!v)return;readEntryForm();S.draft[key]=[...new Set([...(S.draft[key]||[]),v])];renderDrawer()});
   d.querySelectorAll("[data-relrm]").forEach(b=>b.onclick=()=>{const key=b.dataset.relrm;readEntryForm();S.draft[key]=(S.draft[key]||[]).filter(x=>x!==b.dataset.id);renderDrawer()});
 }
@@ -943,7 +973,7 @@ function pinView(){
   ${p.note?`<div class="sec"><h4>Note</h4><p>${esc(p.note)}</p></div>`:""}
   ${e?`${e.summary?`<div class="sec"><h4>Summary</h4><p>${esc(e.summary)}</p></div>`:""}
     ${e.public?`<div class="sec"><h4>Public part</h4><p>${esc(e.public)}</p></div>`:""}
-    <div class="actions"><button class="btn primary" data-open-entry="${e.id}">Open in Codex</button></div>`
+    ${questSection(questsOfEntry(e.id).filter(q=>q.location===e.id),"Quests here",null)}<div class="actions"><button class="btn primary" data-open-entry="${e.id}">Open in Codex</button></div>`
    :`<p class="note">${p.entryId?"The Codex entry this place was linked to has been deleted.":"Not in the Codex yet."}${S.canWrite?" Edit the place to create or link its Codex entry.":""}</p>`}
   ${S.canWrite?`<div class="actions"><button class="btn" data-edit>Edit</button><button class="btn" id="movePinBtn">Move</button><button class="btn danger" data-del>${S.confirmDel?"Click again to delete":"Delete"}</button></div>`:""}`;
 }
@@ -1193,11 +1223,12 @@ function buildGraph(){
   plots.forEach(p=>nodes.set("P:"+p.id,{key:"P:"+p.id,kind:"plot",ref:p}));
   if(S.mmEntries)plots.forEach(p=>(p.entries||[]).forEach(eid=>{const e=S.entries.get(eid);if(!e)return;
     if(!nodes.has("E:"+eid))nodes.set("E:"+eid,{key:"E:"+eid,kind:"entry",ref:e});edges.push({a:"P:"+p.id,b:"E:"+eid,type:"inv"})}));
+  if(S.mmQuests)plots.forEach(p=>questsOfPlot(p.id).filter(q=>q.plotId===p.id).forEach(q=>{nodes.set("Q:"+q.id,{key:"Q:"+q.id,kind:"quest",ref:q});edges.push({a:"P:"+p.id,b:"Q:"+q.id,type:"quest"})}));
   plots.forEach(p=>relatedOut(p).forEach(r=>{if(ids.has(r.id))edges.push({a:"P:"+p.id,b:"P:"+r.id,type:"rel",rel:r.rel})}));
   return {nodes:[...nodes.values()],edges};
 }
 const MM_PW=220,MM_PH=58;
-function mmKey(k){return (S.mmEntries?"E|":"P|")+k}
+function mmKey(k){return (S.mmEntries?"E":"P")+(S.mmQuests?"Q":"")+"|"+k}
 function layoutGraph(g){
   const N=g.nodes,idx=new Map(N.map((n,i)=>[n.key,i]));const R=Math.sqrt(N.length)*170;
   const pos=N.map(n=>{const s=S.mmPos[mmKey(n.key)];if(s)return {x:s.x,y:s.y,fixed:true};
@@ -1218,7 +1249,7 @@ function layoutGraph(g){
       pos[i].x+=f[i].x/h*m;pos[i].y+=f[i].y/h*m;});
   }
   // push overlapping boxes apart
-  const half=n=>n.kind==="plot"?{w:MM_PW/2+18,h:MM_PH/2+16}:{w:70,h:26};
+  const half=n=>n.kind==="plot"?{w:MM_PW/2+18,h:MM_PH/2+16}:n.kind==="quest"?{w:86,h:20}:{w:70,h:26};
   for(let it=0;it<800;it++){let moved=false;
     for(let i=0;i<N.length;i++)for(let j=i+1;j<N.length;j++){
       const a=half(N[i]),b=half(N[j]);const dx=pos[j].x-pos[i].x,dy=pos[j].y-pos[i].y;
@@ -1235,7 +1266,7 @@ function viewMindMap(){
     <g id="mmg"></g></svg>
     <div class="mmtools"><button class="btn small" data-mmzoom="1.25" aria-label="Zoom in">+</button><button class="btn small" data-mmzoom="0.8" aria-label="Zoom out">−</button><button class="btn small" id="mmFit">Fit</button><button class="btn small ghost" id="mmRelayout" title="Forget the positions and arrange everything again">Rearrange</button></div>
   </div>
-  <div class="maplegend"><span><i style="background:var(--danger)"></i>Front</span><span><i style="background:var(--official)"></i>Faction project</span><span><i style="background:var(--project)"></i>Subplot</span><span style="opacity:.75">Dashed box: resolved</span><span><i style="background:${PIN_COLORS.Faction}"></i>Faction</span><span><i style="background:${PIN_COLORS.NPC}"></i>Character</span><span><i style="background:${PIN_COLORS.Location}"></i>Place</span><span>→ connection between plots</span></div>
+  <div class="maplegend"><span><i style="background:var(--danger)"></i>Front</span><span><i style="background:var(--official)"></i>Faction project</span><span><i style="background:var(--project)"></i>Subplot</span><span style="opacity:.75">Dashed box: resolved</span><span><i style="background:${PIN_COLORS.Faction}"></i>Faction</span><span><i style="background:${PIN_COLORS.NPC}"></i>Character</span><span><i style="background:${PIN_COLORS.Location}"></i>Place</span><span><i style="background:var(--accent-soft);outline:1.5px solid var(--accent);border-radius:6px;width:18px"></i>Quest</span><span>→ connection between plots</span></div>
   <p class="help">Click a plot or an entry to highlight what it's connected to; click it again to open it. Drag boxes to arrange the map: your layout is remembered on this device. Connections between plots are set in each plot's form (“Connected plots”).</p>`;
 }
 function bindMindMap(){
@@ -1255,6 +1286,7 @@ function bindMindMap(){
     const eG=el("g",{}),nG=el("g",{}),lG=el("g",{});G.append(eG,nG,lG);
     g.edges.forEach(e=>{const a=P.get(e.a),b=P.get(e.b);const faded=S.mmFocus&&!(e.a===S.mmFocus||e.b===S.mmFocus);
       if(e.type==="inv"){eG.append(el("line",{x1:a.x,y1:a.y,x2:b.x,y2:b.y,stroke:"var(--line)","stroke-width":1.5,opacity:faded?.25:1}));return}
+      if(e.type==="quest"){eG.append(el("line",{x1:a.x,y1:a.y,x2:b.x,y2:b.y,stroke:"var(--accent)","stroke-width":1.5,"stroke-dasharray":"4 4",opacity:faded?.25:.8}));return}
       const s=boxEdge(e.a,b.x,b.y),t=boxEdge(e.b,a.x,a.y);
       eG.append(el("line",{x1:s.x,y1:s.y,x2:t.x,y2:t.y,stroke:"var(--accent)","stroke-width":2.5,"marker-end":"url(#mmarrow)",opacity:faded?.25:1}));
       const mx=(s.x+t.x)/2,my=(s.y+t.y)/2;const tx=el("text",{x:mx,y:my+4,"text-anchor":"middle",class:"mmrel",opacity:faded?.3:1});tx.textContent=e.rel;lG.append(tx);});
@@ -1268,6 +1300,9 @@ function bindMindMap(){
         const nm=el("text",{x:-PW/2+52,y:-4,class:"mmtitle"});nm.textContent=pl.name.length>21?pl.name.slice(0,20)+"…":pl.name;
         const sub=el("text",{x:-PW/2+52,y:14,class:"mmsub"});sub.textContent=`${pl.kind} · ${fill}/${size}`;
         const ttl=el("title",{});ttl.textContent=pl.name;grp.append(nm,sub,ttl);
+      }else if(n.kind==="quest"){const q=n.ref;const qc={"Planned":"var(--discarded)","Open":"var(--proposal)","In progress":"var(--official)","Completed":"var(--project)","Failed":"var(--danger)","Abandoned":"var(--discarded)"}[qStatus(q)]||"var(--accent)";
+        grp.append(el("rect",{x:-78,y:-13,width:156,height:26,rx:13,fill:"var(--accent-soft)",stroke:qc,"stroke-width":2}));
+        const t=el("text",{y:4,"text-anchor":"middle",class:"mmq"});t.textContent=(q.name.length>20?q.name.slice(0,19)+"…":q.name);const tt=el("title",{});tt.textContent=`Quest: ${q.name} (${qStatus(q)})`;grp.append(t,tt);
       }else{const e=n.ref;grp.append(el("circle",{r:10,fill:PIN_COLORS[e.type]||"var(--muted)",stroke:"var(--surface)","stroke-width":2}));
         const t=el("text",{y:26,"text-anchor":"middle",class:"mmlabel"});t.textContent=e.name.length>26?e.name.slice(0,25)+"…":e.name;grp.append(t);}
       nG.append(grp);});
@@ -1291,9 +1326,9 @@ function bindMindMap(){
   svg.addEventListener("pointerup",()=>{if(!drag)return;const d=drag;drag=null;wrap.classList.remove("dragging");
     if(d.moved){if(d.key){const p=P.get(d.key);S.mmPos[mmKey(d.key)]={x:Math.round(p.x),y:Math.round(p.y)};saveMMPos()}return}
     if(!d.key){if(S.mmFocus){S.mmFocus=null;draw()}return}
-    if(S.mmFocus===d.key){const [t,id]=d.key.split(":");openDrawer(t==="P"?{kind:"plot",id}:{kind:"entry",id});return}
+    if(S.mmFocus===d.key){const [t,id]=d.key.split(":");openDrawer(t==="P"?{kind:"plot",id}:t==="Q"?{kind:"quest",id}:{kind:"entry",id});return}
     S.mmFocus=d.key;draw();});
-  svg.addEventListener("keydown",e=>{const n=e.target.closest&&e.target.closest(".mmnode");if(n&&(e.key==="Enter"||e.key===" ")){e.preventDefault();const [t,id]=n.dataset.key.split(":");openDrawer(t==="P"?{kind:"plot",id}:{kind:"entry",id})}});
+  svg.addEventListener("keydown",e=>{const n=e.target.closest&&e.target.closest(".mmnode");if(n&&(e.key==="Enter"||e.key===" ")){e.preventDefault();const [t,id]=n.dataset.key.split(":");openDrawer(t==="P"?{kind:"plot",id}:t==="Q"?{kind:"quest",id}:{kind:"entry",id})}});
   svg.addEventListener("wheel",e=>{e.preventDefault();const r=svg.getBoundingClientRect(),v=S.mmView,f=e.deltaY<0?1.12:1/1.12,nk=Math.max(.2,Math.min(3,v.k*f));
     const cx=e.clientX-r.left,cy=e.clientY-r.top;v.x=cx-(cx-v.x)*(nk/v.k);v.y=cy-(cy-v.y)*(nk/v.k);v.k=nk;applyView()},{passive:false});
   wrap.querySelectorAll("[data-mmzoom]").forEach(b=>b.onclick=()=>{const v=S.mmView,f=+b.dataset.mmzoom,nk=Math.max(.2,Math.min(3,v.k*f)),cx=wrap.clientWidth/2,cy=wrap.clientHeight/2;v.x=cx-(cx-v.x)*(nk/v.k);v.y=cy-(cy-v.y)*(nk/v.k);v.k=nk;applyView()});
@@ -1315,39 +1350,239 @@ function bindRelatedPicker(d){
   d.querySelectorAll("[data-relplotrm]").forEach(b=>b.onclick=()=>{readPlotForm();S.draft.related=(S.draft.related||[]).filter(r=>r.id!==b.dataset.relplotrm);renderDrawer()});
 }
 
+/* ---------- quests ---------- */
+const QUEST_STATUSES=["Planned","Open","In progress","Completed","Failed","Abandoned"];
+const QUEST_DONE=["Completed","Failed","Abandoned"];
+const QUEST_COLUMNS=[["Planned",["Planned"]],["Open to players",["Open"]],["In progress",["In progress"]],["Done",QUEST_DONE]];
+const QCLASS={"Planned":"s-discarded","Open":"s-proposal","In progress":"s-official","Completed":"s-project","Failed":"s-failed","Abandoned":"s-discarded"};
+S.qPlot="";S.qQ="";S.qSessionForm=false;
+function qApproval(q){return q.approval||"Proposal"}
+function qStatus(q){return q.status||"Planned"}
+function qStatusChip(q){return `<span class="chip status ${QCLASS[qStatus(q)]||""}">${esc(qStatus(q))}</span>`}
+function qApprovalChip(q){const a=qApproval(q);return a==="Proposal"?`<span class="chip status s-proposal">Awaiting the team's vote</span>`:a==="Discarded"?`<span class="chip status s-discarded">Rejected by vote</span>`:""}
+function questsOfPlot(pid){return [...S.quests.values()].filter(q=>q.plotId===pid||(q.alsoPlots||[]).includes(pid)).sort(byName)}
+function questsOfEntry(eid){return [...S.quests.values()].filter(q=>q.giver===eid||q.location===eid||(q.entries||[]).includes(eid)).sort(byName)}
+function questsAwaitingMyVote(){return [...S.quests.values()].filter(q=>qApproval(q)==="Proposal"&&!myVote(q.id,"quest"))}
+function objProgress(q){const o=q.objectives||[];return o.length?`${o.filter(x=>x.done).length}/${o.length} objectives`:""}
+function plotName(id){const p=S.plots.get(id);return p?p.name:"(deleted plot)"}
+function effText(n){n=+n||0;return n===0?"no change":(n>0?`+${n} slice${n>1?"s":""}`:`${n} slice${n<-1?"s":""}`)}
+function localToday(){const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,10)}
+function questChips(list){return list.map(q=>`<button class="chip" data-open-quest="${q.id}">${esc(q.name)} · ${esc(qStatus(q))}</button>`).join("")}
+function questCard(q){
+  const prog=objProgress(q);const last=(q.sessions||[]).slice(-1)[0];
+  return `<button class="qcard" data-open-quest="${q.id}">
+    <span class="qname">${esc(q.name||"Untitled quest")}</span>
+    ${q.plotId?`<span class="note">Plot: ${esc(plotName(q.plotId))}</span>`:""}
+    <span class="chips" style="margin:0">${qStatusChip(q)}${qApprovalChip(q)}</span>
+    ${q.pitch?`<span class="qpitch">${esc(q.pitch)}</span>`:""}
+    <span class="note">${[prog,q.giver&&S.entries.has(q.giver)?"Giver: "+esc(entryName(q.giver)):"",last?`Last session ${esc(last.date||"")}`:""].filter(Boolean).join(" · ")}</span>
+  </button>`;
+}
+function viewQuests(){
+  const q=(S.qQ||"").toLowerCase();
+  const list=[...S.quests.values()].filter(x=>(!S.qPlot||x.plotId===S.qPlot||(x.alsoPlots||[]).includes(S.qPlot))
+    &&(!q||[x.name,x.pitch,x.hook,plotName(x.plotId)].join(" ").toLowerCase().includes(q))).sort(byName);
+  const plots=[...S.plots.values()].sort(byName);
+  const waiting=questsAwaitingMyVote().length;
+  return `<h2 class="view">Quests</h2>
+  <p class="lede">Quests are what players actually do in a session. Each belongs to a plot, and its outcome moves that plot's clock. New quests are proposals: all three of you must approve one before it can open.</p>
+  ${S.canWrite&&waiting?`<div class="attention"><b>${waiting} quest${waiting>1?"s":""} waiting for your vote.</b> Open ${waiting>1?"them":"it"} below (column “Planned”) or in Canon.</div>`:""}
+  <div class="bar"><input type="search" id="qQ" placeholder="Search quests" value="${esc(S.qQ||"")}" aria-label="Search quests">
+    <select id="qPlot" aria-label="Filter by plot"><option value="">All plots</option>${plots.map(p=>`<option value="${p.id}" ${S.qPlot===p.id?"selected":""}>${esc(p.name)}</option>`).join("")}</select>
+    ${S.canWrite?`<button class="btn primary" id="newQuest">New quest</button>`:""}</div>
+  ${!S.loaded.quests?`<div class="empty"><b>Loading quests…</b></div>`:!S.quests.size?`<div class="empty"><b>No quests yet</b>Click “New quest”, or open a plot and use “New quest for this plot”.</div>`:
+  `<div class="qboard">${QUEST_COLUMNS.map(([title,sts])=>{const col=list.filter(x=>sts.includes(qStatus(x)));
+    return `<section class="qcol"><h3>${title} <span class="note">${col.length}</span></h3>${col.map(questCard).join("")||`<p class="note">Nothing here.</p>`}</section>`}).join("")}</div>`}`;
+}
+function bindQuests(){
+  const qq=$("#qQ");if(qq)qq.oninput=e=>{S.qQ=e.target.value;const pos=e.target.selectionStart;renderView();const n=$("#qQ");n.focus();n.setSelectionRange(pos,pos)};
+  const qp=$("#qPlot");if(qp)qp.onchange=e=>{S.qPlot=e.target.value;renderView()};
+  const nq=$("#newQuest");if(nq)nq.onclick=()=>newQuest(S.qPlot||"");
+}
+function newQuest(plotId){S.qSessionForm=false;openDrawer({kind:"quest",id:null,draft:{id:uid(),name:"",plotId:plotId||"",alsoPlots:[],approval:"Proposal",status:"Planned",entries:[],objectives:[],sessions:[],effectSuccess:-1,effectFailure:1}},"edit")}
+function questView(){
+  const q=S.quests.get(S.sel.id);if(!q)return `<div class="dhead"><h2>Quest removed</h2>${closeBtn()}</div>`;
+  const sec=(h,v)=>v?`<div class="sec"><h4>${h}</h4><p>${esc(v)}</p></div>`:"";
+  const p=q.plotId&&S.plots.get(q.plotId);const st=qStatus(q),ap=qApproval(q);
+  const loc=q.location&&S.entries.get(q.location);const locPins=loc?pinsForEntry(loc.id):[];
+  const objs=q.objectives||[];
+  const outcomePending=(st==="Completed"||st==="Failed")&&p&&!(q.outcome&&q.outcome.applied);
+  const eff=st==="Completed"?(+q.effectSuccess||0):(+q.effectFailure||0);
+  const to=p?Math.max(0,Math.min(p.clockSize|0,(p.clockFilled|0)+eff)):0;
+  const sessions=(q.sessions||[]).slice().sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+  let actions="";
+  if(S.canWrite){
+    if(ap!=="Approved")actions=`<p class="note">${ap==="Proposal"?"This quest can open once all three of you approve it.":"Rejected by the team. Edit it and send it back to the vote to try again."}</p>`;
+    else{const b=(s,l,cls="")=>`<button class="btn small ${cls}" data-qstatus="${s}">${l}</button>`;
+      actions=`<div class="actions" style="margin-top:6px">${st==="Planned"?b("Open","Open to players","primary"):""}${st==="Open"?b("In progress","Start","primary"):""}${st==="In progress"?b("Completed","Completed","primary")+b("Failed","Failed"):""}${!QUEST_DONE.includes(st)?b("Abandoned","Abandon"):b("In progress","Reopen")}</div>`;}
+  }
+  const players=[...new Set(sessions.flatMap(s=>s.players||[]))];
+  return `<div class="dhead"><div><h2>${esc(q.name)}</h2>${p?`<div class="fr">Quest of <button class="linkbtn" data-open-plot="${p.id}">${esc(p.name)}</button></div>`:""}</div>${closeBtn()}</div>
+  <div class="chips">${qStatusChip(q)}${qApprovalChip(q)}${(q.alsoPlots||[]).filter(id=>S.plots.has(id)).map(id=>`<button class="chip" data-open-plot="${id}">Also: ${esc(plotName(id))}</button>`).join("")}</div>
+  ${ap==="Proposal"?`<div class="sec"><h4>Team vote</h4>${voteBox(q,false,"quest")}</div>`:decisionLine(q)}
+  ${actions}
+  ${outcomePending?`<div class="outcome"><b>${st==="Completed"?"Quest completed":"Quest failed"}: apply the outcome to “${esc(p.name)}”?</b>
+    <div>Clock: ${p.clockFilled|0}/${p.clockSize|0} → <b>${to}/${p.clockSize|0}</b> (${effText(eff)})${st==="Failed"&&q.failPortent?`, and the portent “${esc(q.failPortent)}” happens`:""}.</div>
+    ${S.canWrite?`<div class="actions" style="margin-top:6px"><button class="btn small primary" data-qapply>Apply</button><button class="btn small" data-qskip>Skip</button></div>`:""}</div>`:""}
+  ${q.outcome&&q.outcome.applied?`<p class="note">${q.outcome.skipped?"Outcome not applied to the plot.":`Outcome applied to the plot's clock on ${new Date(q.outcome.appliedAt||Date.now()).toLocaleDateString()}.`}</p>`:""}
+  ${sec("Pitch",q.pitch)}${sec("Hook: how players hear about it",q.hook)}${sec("Unlocks when",q.prereq)}
+  ${(q.giver&&S.entries.has(q.giver))||loc?`<div class="sec"><h4>Who and where</h4><dl class="rels">
+    ${q.giver&&S.entries.has(q.giver)?`<dt>Quest giver</dt><dd>${chipsFor([q.giver])}</dd>`:""}
+    ${loc?`<dt>Location</dt><dd>${chipsFor([loc.id])}${locPins.map(pp=>`<button class="chip" data-gotopin="${pp.id}">On ${esc((S.maps.get(pp.mapId)||{}).name||"map")}</button>`).join("")}</dd>`:""}</dl></div>`:""}
+  ${(q.entries||[]).filter(id=>S.entries.has(id)).length?`<div class="sec"><h4>Factions and characters involved</h4><div class="links">${chipsFor((q.entries||[]).filter(id=>S.entries.has(id)))}</div></div>`:""}
+  ${objs.length?`<div class="sec"><h4>Objectives (${objs.filter(o=>o.done).length}/${objs.length})</h4><ul class="portents">${objs.map((o,i)=>`<li class="${o.done?"done":""}"><input type="checkbox" ${o.done?"checked":""} ${S.canWrite?"":"disabled"} data-qobj="${i}" aria-label="Objective ${i+1} done"><span>${esc(o.text)}</span></li>`).join("")}</ul></div>`:""}
+  ${q.success||q.failure||p?`<div class="sec"><h4>Stakes</h4><dl class="rels">
+    <dt>If it succeeds</dt><dd style="display:block">${esc(q.success||"")}${p?` <span class="note">(${esc(p.name)}: ${effText(q.effectSuccess)})</span>`:""}</dd>
+    <dt>If it fails</dt><dd style="display:block">${esc(q.failure||"")}${p?` <span class="note">(${esc(p.name)}: ${effText(q.effectFailure)}${q.failPortent?`; portent “${esc(q.failPortent)}”`:""})</span>`:""}</dd></dl></div>`:""}
+  ${sec("Reward",q.reward)}
+  <div class="sec"><h4>Sessions${players.length?` · players so far: ${esc(players.join(", "))}`:""}</h4>
+    ${sessions.length?`<ul class="sessions">${sessions.map(s=>`<li><div><b>${esc(s.date||"No date")}</b> · storyteller: ${esc(s.storyteller?(s.storyteller===S.me?"you":s.storyteller.split("@")[0]):"not set")}${S.canWrite?` <button class="btn ghost small" data-qsessdel="${s.id}" aria-label="Delete this session">${S.confirmSess===s.id?"Confirm delete":"×"}</button>`:""}</div>
+      ${(s.players||[]).length?`<div class="note">Players: ${esc(s.players.join(", "))}</div>`:""}${s.log?`<p style="margin:2px 0 0;white-space:pre-wrap">${esc(s.log)}</p>`:""}</li>`).join("")}</ul>`:`<p class="note">No session logged yet.</p>`}
+    ${S.canWrite?(S.qSessionForm?sessionForm(q):`<button class="btn small" data-qsessnew>Log a session</button>`):""}</div>
+  ${S.canWrite?`<div class="actions"><button class="btn primary" data-edit>Edit</button><button class="btn danger" data-del>${S.confirmDel?"Click again to delete":"Delete"}</button></div>`:""}`;
+}
+function allPlayers(){return [...new Set([...S.quests.values()].flatMap(q=>(q.sessions||[]).flatMap(s=>s.players||[])))].sort((a,b)=>a.localeCompare(b))}
+function sessionForm(q){
+  const team=[...S.members.keys()].sort();
+  return `<form class="form sessform" id="sessForm">
+    <div class="two"><label>Date<input type="date" id="ss_date" value="${localToday()}" required></label>
+      <label>Storyteller<select id="ss_st">${team.map(m=>`<option value="${esc(m)}" ${m===S.me?"selected":""}>${esc(m===S.me?"You":m.split("@")[0])}</option>`).join("")}</select></label></div>
+    <label>Players <span class="hint">Their roleplay character names, comma separated</span><input type="text" id="ss_players" list="ss_playerlist" autocomplete="off"></label>
+    <datalist id="ss_playerlist">${allPlayers().map(p=>`<option value="${esc(p)}">`).join("")}</datalist>
+    <label>What happened<textarea id="ss_log" placeholder="A short summary of the session"></textarea></label>
+    <div class="actions"><button class="btn primary small" type="submit">Save session</button><button class="btn small" type="button" data-qsesscancel>Cancel</button></div></form>`;
+}
+function questForm(){
+  const q=S.draft;const isNew=!S.quests.has(q.id);const ap=qApproval(S.quests.get(q.id)||q);
+  const plots=[...S.plots.values()].sort(byName);const p=q.plotId&&S.plots.get(q.plotId);
+  const chars=characters(),places=[...S.entries.values()].filter(e=>e.type==="Location").sort(byName);
+  const effOpts=(id,cur)=>`<select id="${id}">${[-3,-2,-1,0,1,2,3].map(n=>`<option value="${n}" ${(+cur||0)===n?"selected":""}>${n>0?"+"+n:n} ${n===0?"(no change)":Math.abs(n)>1?"slices":"slice"}</option>`).join("")}</select>`;
+  const pick=(key,pool,label,optFn)=>{const cur=(q[key]||[]).filter(id=>pool.some(x=>x.id===id));const left=pool.filter(x=>!cur.includes(x.id));
+    return `<div><div style="font-weight:500;font-size:.93rem">${label}</div>
+      <div class="links" style="margin:6px 0">${cur.map(id=>`<span class="chip">${esc((pool.find(x=>x.id===id)||{}).name)}<button type="button" class="btn ghost small" data-qrm="${key}" data-id="${id}" aria-label="Remove">×</button></span>`).join("")||`<span class="note">None yet.</span>`}</div>
+      ${left.length?`<div style="display:flex;gap:6px"><select id="qpick_${key}" aria-label="${label}"><option value="">Choose…</option>${optFn?optFn(left):left.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join("")}</select><button type="button" class="btn" data-qadd="${key}">Add</button></div>`:""}</div>`};
+  return `<div class="dhead"><h2>${isNew?"New quest":"Edit quest"}</h2>${closeBtn()}</div>
+  ${isNew?`<p class="note">New quests start as proposals: all three of you must approve before it can open.</p>`:""}
+  <form class="form" id="questForm" style="margin-top:12px">
+    <label>Name<input type="text" id="q_name" value="${esc(q.name)}" required placeholder="e.g. Missing dockworkers"></label>
+    <label>Pitch <span class="hint">What it's about, in one or two sentences</span><textarea id="q_pitch">${esc(q.pitch)}</textarea></label>
+    <label>Plot <span class="hint">The storyline this quest belongs to</span><select id="q_plot"><option value="">No plot</option>${plots.map(x=>`<option value="${x.id}" ${q.plotId===x.id?"selected":""}>${esc(x.name)}</option>`).join("")}</select></label>
+    ${pick("alsoPlots",plots.filter(x=>x.id!==q.plotId),"Also touches these plots")}
+    <label>Hook <span class="hint">How players hear about it: a rumor, a notice, someone asking for help</span><textarea id="q_hook" style="min-height:48px">${esc(q.hook)}</textarea></label>
+    <label>Unlocks when <span class="hint">Optional, e.g. “after Missing dockworkers” or “when the clock reaches 3/8”</span><input type="text" id="q_prereq" value="${esc(q.prereq)}"></label>
+    <div class="two"><label>Quest giver<select id="q_giver"><option value="">None</option>${chars.map(c=>`<option value="${c.id}" ${q.giver===c.id?"selected":""}>${esc(c.name)}</option>`).join("")}</select></label>
+      <label>Location<select id="q_location"><option value="">None</option>${places.map(c=>`<option value="${c.id}" ${q.location===c.id?"selected":""}>${esc(c.name)}</option>`).join("")}</select></label></div>
+    ${pick("entries",[...S.entries.values()].filter(e=>e.type!=="Event"),"Factions and characters involved",entryOptionGroups)}
+    <label>Objectives <span class="hint">One per line; you'll tick them off during play</span><textarea id="q_obj">${esc((q.objectives||[]).map(o=>o.text).join("\n"))}</textarea></label>
+    <fieldset class="relset"><legend>Stakes</legend>
+      <label>If it succeeds<textarea id="q_success" style="min-height:48px">${esc(q.success)}</textarea></label>
+      ${p?`<label>Effect on “${esc(p.name)}” (now ${p.clockFilled|0}/${p.clockSize|0}) ${effOpts("q_effS",q.effectSuccess)}</label>`:""}
+      <label>If it fails<textarea id="q_failure" style="min-height:48px">${esc(q.failure)}</textarea></label>
+      ${p?`<label>Effect on “${esc(p.name)}” ${effOpts("q_effF",q.effectFailure)}</label>
+      ${(p.portents||[]).length?`<label>Portent triggered on failure <span class="hint">Optional</span><select id="q_portent"><option value="">None</option>${p.portents.map(x=>`<option ${q.failPortent===x.text?"selected":""}>${esc(x.text)}</option>`).join("")}</select></label>`:""}`:`<p class="note" style="margin:0">Choose a plot to set the effect on its clock.</p>`}
+      <p class="note" style="margin:0">Negative numbers erase slices (good for the heroes against a threat); positive numbers fill them.</p>
+    </fieldset>
+    <label>Reward <span class="hint">Gold, items, information, reputation</span><textarea id="q_reward" style="min-height:48px">${esc(q.reward)}</textarea></label>
+    ${!isNew&&ap!=="Proposal"?`<label style="flex-direction:row;gap:8px;font-weight:400"><input type="checkbox" id="q_revote"> Send it back to the team vote (it returns to Planned)</label>`:""}
+    <div class="actions"><button class="btn primary" type="submit">Save quest</button><button class="btn" type="button" data-cancel>Cancel</button></div>
+  </form>`;
+}
+function readQuestForm(){
+  const q=S.draft,g=id=>{const el=document.getElementById(id);return el?el.value:undefined};
+  q.name=(g("q_name")||"").trim();q.pitch=g("q_pitch")||"";q.plotId=g("q_plot")||"";q.hook=g("q_hook")||"";q.prereq=(g("q_prereq")||"").trim();
+  q.giver=g("q_giver")||"";q.location=g("q_location")||"";q.success=g("q_success")||"";q.failure=g("q_failure")||"";q.reward=g("q_reward")||"";
+  if(g("q_effS")!==undefined)q.effectSuccess=+g("q_effS");if(g("q_effF")!==undefined)q.effectFailure=+g("q_effF");
+  q.failPortent=g("q_portent")!==undefined?g("q_portent"):(q.plotId?q.failPortent||"":"");
+  const old=q.objectives||[];q.objectives=(g("q_obj")||"").split("\n").map(s=>s.trim()).filter(Boolean).map(t=>({text:t,done:!!(old.find(o=>o.text===t)||{}).done}));
+  q.alsoPlots=(q.alsoPlots||[]).filter(id=>id!==q.plotId);
+  const rv=document.getElementById("q_revote");q._revote=!!(rv&&rv.checked);
+}
+async function writeQuest(q,ok){const body=clean(q);delete body._revote;if(await write("quests/"+q.id,stamp(body),ok)){S.quests.set(q.id,body);return true}return false}
+async function saveQuest(){
+  readQuestForm();const q=S.draft;if(!q.name){toast("Give the quest a name.");return}
+  if(!S.quests.has(q.id)){q.approval="Proposal";q.status="Planned"}
+  if(q._revote){q.approval="Proposal";q.status="Planned";delete q.outcome}
+  if(await writeQuest(q,S.quests.has(q.id)?"Quest saved":"Quest proposed to the team")){S.sel={kind:"quest",id:q.id};S.mode="view";S.draft=null;renderDrawer();renderView()}
+}
+async function setQuestStatus(id,status){
+  const q=S.quests.get(id);if(!q)return;const n=clean(q);n.status=status;
+  if(status==="Completed"||status==="Failed"){n.outcome={...(n.outcome||{}),result:status,at:Date.now()};
+    if(n.outcome.applied&&n.outcome.result!==q.status)n.outcome.applied=n.outcome.applied;}
+  if(await writeQuest(n,{"Open":"Open to players","In progress":"Quest started","Completed":"Quest completed","Failed":"Quest failed","Abandoned":"Quest abandoned"}[status]||"Saved")){renderDrawer();renderView()}
+}
+async function applyOutcome(id,skip){
+  const q=S.quests.get(id);if(!q)return;const n=clean(q);
+  if(!skip){const p=S.plots.get(q.plotId);if(!p)return;const st=qStatus(q);const eff=st==="Completed"?(+q.effectSuccess||0):(+q.effectFailure||0);
+    const pn=clean(p);const from=pn.clockFilled|0,to=Math.max(0,Math.min(pn.clockSize|0,from+eff));pn.clockFilled=to;
+    pn.history=[...(pn.history||[]),{at:Date.now(),from,to,note:`Quest “${q.name}” ${st==="Completed"?"completed":"failed"}`}].slice(-50);
+    if(st==="Failed"&&q.failPortent)(pn.portents||[]).forEach(x=>{if(x.text===q.failPortent)x.done=true});
+    if(!(await write("plots/"+p.id,stamp(pn))))return;S.plots.set(p.id,pn);
+    if(to>=(pn.clockSize|0)&&from<to)toast(`${p.name}: the clock is full. It happens.`);}
+  n.outcome={...(n.outcome||{}),applied:true,skipped:!!skip,appliedAt:Date.now()};
+  if(await writeQuest(n,skip?"Outcome skipped":"Outcome applied to the plot")){renderDrawer();renderView()}
+}
+function bindQuestDrawer(d){
+  const f=d.querySelector("#questForm");
+  if(f){f.onsubmit=ev=>{ev.preventDefault();saveQuest()};
+    f.querySelector("#q_plot").onchange=()=>{readQuestForm();renderDrawer()};
+    f.querySelectorAll("[data-qadd]").forEach(b=>b.onclick=()=>{const k=b.dataset.qadd,v=d.querySelector("#qpick_"+k).value;if(!v)return;readQuestForm();S.draft[k]=[...new Set([...(S.draft[k]||[]),v])];renderDrawer()});
+    f.querySelectorAll("[data-qrm]").forEach(b=>b.onclick=()=>{const k=b.dataset.qrm;readQuestForm();S.draft[k]=(S.draft[k]||[]).filter(x=>x!==b.dataset.id);renderDrawer()});}
+  if(!S.sel||S.sel.kind!=="quest"||S.mode!=="view")return;const id=S.sel.id;
+  d.querySelectorAll("[data-qstatus]").forEach(b=>b.onclick=()=>setQuestStatus(id,b.dataset.qstatus));
+  const ap=d.querySelector("[data-qapply]");if(ap)ap.onclick=()=>applyOutcome(id,false);
+  const sk=d.querySelector("[data-qskip]");if(sk)sk.onclick=()=>applyOutcome(id,true);
+  d.querySelectorAll("[data-qobj]").forEach(c=>c.onchange=async()=>{const q=S.quests.get(id);if(!q)return;const n=clean(q);n.objectives[+c.dataset.qobj].done=c.checked;if(await writeQuest(n)){renderDrawer();renderView()}});
+  const ns=d.querySelector("[data-qsessnew]");if(ns)ns.onclick=()=>{S.qSessionForm=true;renderDrawer();const i=$("#ss_players");if(i)i.focus()};
+  const sc=d.querySelector("[data-qsesscancel]");if(sc)sc.onclick=()=>{S.qSessionForm=false;renderDrawer()};
+  const sf=d.querySelector("#sessForm");
+  if(sf)sf.onsubmit=async ev=>{ev.preventDefault();const q=S.quests.get(id);if(!q)return;const n=clean(q);
+    const s={id:uid(),date:$("#ss_date").value,storyteller:$("#ss_st").value,players:parseTags($("#ss_players").value),log:$("#ss_log").value.trim()};
+    n.sessions=[...(n.sessions||[]),s];if(await writeQuest(n,"Session logged")){S.qSessionForm=false;renderDrawer();renderView()}};
+  d.querySelectorAll("[data-qsessdel]").forEach(b=>b.onclick=async()=>{const sid=b.dataset.qsessdel;if(S.confirmSess!==sid){S.confirmSess=sid;renderDrawer();return}S.confirmSess=null;
+    const q=S.quests.get(id);if(!q)return;const n=clean(q);n.sessions=(n.sessions||[]).filter(s=>s.id!==sid);if(await writeQuest(n,"Session deleted")){renderDrawer()}});
+}
+function questSection(list,title,plotId){
+  if(!list.length&&!plotId)return "";
+  return `<div class="sec"><h4>${title}</h4>${list.length?`<ul class="portents">${list.map(q=>`<li><button class="chip" data-open-quest="${q.id}">${esc(q.name)}</button>${qStatusChip(q)}${qApproval(q)==="Proposal"?`<span class="note">awaiting vote</span>`:""}</li>`).join("")}</ul>`:`<p class="note">No quests yet.</p>`}
+    ${plotId&&S.canWrite?`<button class="btn small" data-newquest="${plotId}">New quest for this plot</button>`:""}</div>`;
+}
+
 /* ---------- votes ---------- */
 S.votes=new Map(); // entryId -> Map(voter -> "approve"|"reject")
-function votesFor(id){return S.votes.get(id)||new Map()}
+S.qvotes=new Map();
+const VOTE_CFG={entry:{table:"votes",col:"entry_id",store:"votes"},quest:{table:"quest_votes",col:"quest_id",store:"qvotes"}};
+function votesFor(id,kind="entry"){return S[VOTE_CFG[kind].store].get(id)||new Map()}
 function voteNeed(){return S.members.size||1}
-function myVote(id){return votesFor(id).get(S.me)||""}
+function myVote(id,kind="entry"){return votesFor(id,kind).get(S.me)||""}
 function awaitingMyVote(){return [...S.entries.values()].filter(e=>e.status==="Proposal"&&!myVote(e.id))}
-function setVoteLocal(entryId,voter,vote){let m=S.votes.get(entryId);if(!m){m=new Map();S.votes.set(entryId,m)}if(vote)m.set(voter,vote);else m.delete(voter)}
+function setVoteLocal(entryId,voter,vote,kind="entry"){const st=S[VOTE_CFG[kind].store];let m=st.get(entryId);if(!m){m=new Map();st.set(entryId,m)}if(vote)m.set(voter,vote);else m.delete(voter)}
 const voteBusy=new Set();
-async function castVote(entryId,vote){
-  if(voteBusy.has(entryId))return;voteBusy.add(entryId);
-  const mine=myVote(entryId);
+async function castVote(entryId,vote,kind="entry"){
+  const cfg=VOTE_CFG[kind];const key=kind+":"+entryId;
+  if(voteBusy.has(key))return;voteBusy.add(key);
+  const mine=myVote(entryId,kind);
   try{
     if(mine===vote){
-      const {error}=await S.sb.from("votes").delete().eq("entry_id",entryId).eq("voter",S.me);if(error)throw error;
-      setVoteLocal(entryId,S.me,"");toast("Vote withdrawn");
+      const {error}=await S.sb.from(cfg.table).delete().eq(cfg.col,entryId).eq("voter",S.me);if(error)throw error;
+      setVoteLocal(entryId,S.me,"",kind);toast("Vote withdrawn");
     }else{
-      const {error}=await S.sb.from("votes").upsert({entry_id:entryId,voter:S.me,vote});if(error)throw error;
-      setVoteLocal(entryId,S.me,vote);toast(vote==="approve"?"You voted to approve":"You voted to reject");
+      const {error}=await S.sb.from(cfg.table).upsert({[cfg.col]:entryId,voter:S.me,vote});if(error)throw error;
+      setVoteLocal(entryId,S.me,vote,kind);toast(vote==="approve"?"You voted to approve":"You voted to reject");
     }
   }catch(err){toast("Couldn't record the vote: "+(err.message||err))}
-  finally{voteBusy.delete(entryId);renderView();if(S.sel&&S.sel.kind==="entry"&&S.sel.id===entryId&&S.mode==="view")renderDrawer()}
+  finally{voteBusy.delete(key);renderView();if(S.sel&&S.sel.kind===kind&&S.sel.id===entryId&&S.mode==="view")renderDrawer()}
 }
-function voteBox(e,compact){
-  const v=votesFor(e.id),need=voteNeed();
+function voteBox(e,compact,kind="entry"){
+  const v=votesFor(e.id,kind),need=voteNeed();
   const yes=[...v.values()].filter(x=>x==="approve").length,no=[...v.values()].filter(x=>x==="reject").length;
-  const mine=myVote(e.id);
+  const mine=myVote(e.id,kind);
   const people=[...S.members.keys()].sort().map(em=>{const x=v.get(em);
     return `<span class="voter ${x||"none"}" title="${esc(em)}: ${x==="approve"?"approves":x==="reject"?"rejects":"has not voted yet"}">${x==="approve"?"✓":x==="reject"?"✗":"·"} ${esc(em===S.me?"you":em.split("@")[0])}</span>`}).join("");
   return `<div class="votebox${compact?" compact":""}">
     <div class="votecount"><b>${yes}</b> approve · <b>${no}</b> reject <span class="note">· all ${need} must agree</span></div>
     ${yes&&no?`<p class="note" style="margin:0">The votes are split. It stays a proposal until everyone agrees: talk it over, rework the idea, or change your vote.</p>`:""}
     <div class="voters">${people}</div>
-    ${S.canWrite?`<div class="votebtns"><button class="btn small${mine==="approve"?" voted-yes":""}" data-vote="${e.id}" data-v="approve" aria-pressed="${mine==="approve"}">${mine==="approve"?"✓ Approved":"Approve"}</button><button class="btn small${mine==="reject"?" voted-no":""}" data-vote="${e.id}" data-v="reject" aria-pressed="${mine==="reject"}">${mine==="reject"?"✗ Rejected":"Reject"}</button>${mine?`<span class="note">Click your vote again to withdraw it.</span>`:""}</div>`:""}
+    ${S.canWrite?`<div class="votebtns"><button class="btn small${mine==="approve"?" voted-yes":""}" data-vote="${e.id}" data-vote-kind="${kind}" data-v="approve" aria-pressed="${mine==="approve"}">${mine==="approve"?"✓ Approved":"Approve"}</button><button class="btn small${mine==="reject"?" voted-no":""}" data-vote="${e.id}" data-vote-kind="${kind}" data-v="reject" aria-pressed="${mine==="reject"}">${mine==="reject"?"✗ Rejected":"Reject"}</button>${mine?`<span class="note">Click your vote again to withdraw it.</span>`:""}</div>`:""}
   </div>`;
 }
 function decisionLine(e){const d=e.decision;if(!d||!d.result)return "";
@@ -1379,8 +1614,8 @@ async function savePlot(){
   if(ok){S.plots.set(p.id,clean(p));S.sel={kind:"plot",id:p.id};S.mode="view";S.draft=null;renderDrawer();renderView()}
 }
 async function removeSelected(){
-  const {kind,id}=S.sel;const path=({entry:"entries/",plot:"plots/",pin:"pins/"}[kind])+id;
-  try{await del(path.split("/")[0],id);({entry:S.entries,plot:S.plots,pin:S.pins}[kind]).delete(id);toast("Deleted");closeDrawer()}catch(err){toast("Couldn't delete: "+(err.message||"error"))}
+  const {kind,id}=S.sel;const path=({entry:"entries/",plot:"plots/",pin:"pins/",quest:"quests/"}[kind])+id;
+  try{await del(path.split("/")[0],id);({entry:S.entries,plot:S.plots,pin:S.pins,quest:S.quests}[kind]).delete(id);toast("Deleted");closeDrawer()}catch(err){toast("Couldn't delete: "+(err.message||"error"))}
 }
 const busy=new Set();
 async function tick(id,delta,note){
@@ -1434,7 +1669,7 @@ async function delMember(email){
 }
 
 /* ---------- boot ---------- */
-const TABLES={entries:S.entries,plots:S.plots,register:S.register,maps:S.maps,pins:S.pins};
+const TABLES={entries:S.entries,plots:S.plots,register:S.register,maps:S.maps,pins:S.pins,quests:S.quests};
 function rowToItem(r){return {...(r.data||{}),id:r.id,updatedAt:r.updated_at?Date.parse(r.updated_at):null,updatedBy:r.updated_by}}
 async function loadAll(){
   for(const [t,map] of Object.entries(TABLES)){
@@ -1445,13 +1680,16 @@ async function loadAll(){
   }
   const {data:ms}=await S.sb.from("members").select("*");
   S.members.clear();(ms||[]).forEach(m=>S.members.set(m.email,m));
+  const {data:qvs}=await S.sb.from("quest_votes").select("*");
+  S.qvotes.clear();(qvs||[]).forEach(x=>setVoteLocal(x.quest_id,x.voter,x.vote,"quest"));
   const {data:vs}=await S.sb.from("votes").select("*");
   S.votes.clear();(vs||[]).forEach(x=>setVoteLocal(x.entry_id,x.voter,x.vote));
   renderView();if(S.sel&&S.mode==="view")renderDrawer();
 }
 function listen(){
   S.sb.channel("bible").on("postgres_changes",{event:"*",schema:"public"},p=>{
-    if(p.table==="votes"){if(p.eventType==="DELETE")setVoteLocal(p.old.entry_id,p.old.voter,"");else setVoteLocal(p.new.entry_id,p.new.voter,p.new.vote)}
+    if(p.table==="quest_votes"){if(p.eventType==="DELETE")setVoteLocal(p.old.quest_id,p.old.voter,"","quest");else setVoteLocal(p.new.quest_id,p.new.voter,p.new.vote,"quest")}
+    else if(p.table==="votes"){if(p.eventType==="DELETE")setVoteLocal(p.old.entry_id,p.old.voter,"");else setVoteLocal(p.new.entry_id,p.new.voter,p.new.vote)}
     else if(p.table==="members"){if(p.eventType==="DELETE")S.members.delete(p.old.email);else S.members.set(p.new.email,p.new)}
     else{const map=TABLES[p.table];if(!map)return;
       if(p.eventType==="DELETE")map.delete(p.old.id);else map.set(p.new.id,rowToItem(p.new));}
